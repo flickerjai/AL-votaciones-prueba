@@ -108,6 +108,7 @@ const LNV_PARTIES = {
 /*
   CONEXIÓN VIVA A GOOGLE SHEETS
   La visualización depende exclusivamente de estas tres fuentes CSV publicadas.
+  Cada carga añade un parámetro anticaché para solicitar la versión más reciente.
   Si alguna fuente falla o queda vacía, se muestra un aviso y no se presentan datos.
 */
 const LNV_LIVE_SOURCES = {
@@ -158,7 +159,9 @@ async function lnvLoad() {
   for (const key of ["votaciones","votos","padron"]) {
     const url=LNV_LIVE_SOURCES[key];
     if (!url) throw new Error(`Falta configurar la fuente en vivo: ${key}`);
-    const res=await fetch(url,{cache:"no-store"});
+    const lnvSep=url.includes("?")?"&":"?";
+    const lnvFreshUrl=`${url}${lnvSep}lnv_ts=${Date.now()}`;
+    const res=await fetch(lnvFreshUrl,{cache:"no-store"});
     if (!res.ok) throw new Error(`No se pudo cargar ${key} (HTTP ${res.status})`);
     out[key]=lnvCSV(await res.text());
     if (!out[key].length) throw new Error(`La fuente ${key} no devolvió datos`);
@@ -470,6 +473,21 @@ function lnvResize() {
 async function lnvInit() {
   lnvData=await lnvLoad();
   lnvData._byVote=lnvByVote();
+
+  // Integridad de datos: una votación solo se muestra si tiene al menos
+  // un registro asociado en la hoja Votos. Esto evita filas huérfanas
+  // o publicaciones antiguas de Google Sheets con conteos 0/0/0/0.
+  const lnvOriginalVoteCount=lnvData.votaciones.length;
+  lnvData.votaciones=lnvData.votaciones.filter(v=>{
+    const id=v["ID de votación"];
+    return id && (lnvData._byVote.get(id)||[]).length>0;
+  });
+  if (lnvData.votaciones.length!==lnvOriginalVoteCount) {
+    console.warn(
+      `lnv: se omitieron ${lnvOriginalVoteCount-lnvData.votaciones.length} votaciones sin registros asociados en la hoja Votos.`
+    );
+  }
+
   lnvData._padByEmail=new Map(lnvData.padron.map(p=>[p.Correo,p]));
   lnvRenderSummary();
   lnvSetTab("votaciones");
