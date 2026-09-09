@@ -257,17 +257,23 @@ function lnvRenderSummary() {
       if (!subset.length) return null;
 
       const maxActa=Math.max(...subset.map(x=>x.num));
+
+      // Puede haber varias votaciones dentro de la misma acta.
+      // Se toma la fecha cronológicamente más reciente de esa acta,
+      // normalizando antes el formato recibido desde Google Sheets.
       const rowsOfMax=subset
         .filter(x=>x.num===maxActa)
         .map(x=>x.row)
-        .sort((a,b)=>String(b["Fecha de votación"]||"").localeCompare(String(a["Fecha de votación"]||"")));
+        .sort((a,b)=>lnvDateISO(b["Fecha de votación"]).localeCompare(lnvDateISO(a["Fecha de votación"])));
 
       return rowsOfMax[0] || null;
     })
     .filter(Boolean);
 
+  // Compara cronológicamente las dos candidatas:
+  // acta ordinaria más alta vs. acta extraordinaria más alta.
   const latestActa=latestByKind
-    .sort((a,b)=>String(b["Fecha de votación"]||"").localeCompare(String(a["Fecha de votación"]||"")))[0] || null;
+    .sort((a,b)=>lnvDateISO(b["Fecha de votación"]).localeCompare(lnvDateISO(a["Fecha de votación"])))[0] || null;
 
   document.getElementById("lnv-updated").textContent=latestActa?.["Fecha de votación"]
     ? "Base de datos actualizada a la fecha: "+lnvFmtDate(latestActa["Fecha de votación"])
