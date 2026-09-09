@@ -666,6 +666,19 @@ function lnvRenderParties() {
     return `linear-gradient(90deg, ${stops})`;
   };
 
+  const lnvPartyBadgeStyle=(code)=>{
+    if (code==="PFA") return {background:"#fede29",color:"#000000"};
+    const p=LNV_PARTIES[code];
+    return {background:lnvPartySurface(code),color:p?.text||"#ffffff"};
+  };
+
+  const lnvPartyAccent=(code)=>{
+    if (code==="PFA") return "#fede29";
+    if (code==="PUSC") return "#e90004";
+    if (code==="CAC") return "#14928a";
+    return LNV_PARTIES[code]?.primary || "#64748b";
+  };
+
   const lnvCohesionDonut=(code,value)=>{
     const p=LNV_PARTIES[code];
     const pct=Math.max(0,Math.min(1,value||0));
@@ -692,7 +705,6 @@ function lnvRenderParties() {
     </div>`;
   };
 
-  // El selector vuelve al estilo institucional: azul La Nación para la opción activa.
   const selector=document.getElementById("lnv-party-selector");
   selector.innerHTML=partyCodes.map(code=>{
     const on=code===lnvState.party;
@@ -711,18 +723,66 @@ function lnvRenderParties() {
 
   const code=lnvState.party, p=LNV_PARTIES[code];
   const members=lnvData.padron.filter(x=>x.Partido===code);
+  const badge=lnvPartyBadgeStyle(code);
 
   const cohValues=[];
   let unanimous=0;
+  let withEffective=0;
+  const dissentVotes=[];
+
   for (const v of lnvData.votaciones) {
     const rows=lnvData._byVote.get(v["ID de votación"])||[];
-    const partyRows=rows.filter(r=>r.Partido===code && (r.Voto==="A favor" || r.Voto==="En contra"));
-    if (!partyRows.length) continue;
-    const coh=lnvCohesion(rows,code);
-    cohValues.push(coh);
-    if (coh===1) unanimous++;
+    const partyRows=rows.filter(r=>r.Partido===code);
+    const effectiveRows=partyRows.filter(r=>r.Voto==="A favor" || r.Voto==="En contra");
+    if (effectiveRows.length) {
+      withEffective++;
+      const coh=lnvCohesion(rows,code);
+      cohValues.push(coh);
+      if (coh===1) unanimous++;
+    }
+
+    const contraRows=partyRows.filter(r=>r.Voto==="En contra");
+    if (contraRows.length) {
+      dissentVotes.push({
+        vote:v,
+        contra:contraRows
+      });
+    }
   }
+
   const avg=cohValues.length ? cohValues.reduce((a,b)=>a+b,0)/cohValues.length : null;
+  const isSingleMember=members.length===1;
+
+  const singleMemberNote=isSingleMember ? `
+    <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+      <h3 class="text-sm font-bold text-amber-950">Nota sobre esta bancada</h3>
+      <p class="mt-1 text-xs leading-5 text-amber-900">Esta es una bancada unipersonal. Por eso, cuando su único diputado emite un voto efectivo, la cohesión necesariamente es 100% y la votación aparece como “sin división”: no hay compañeros de fracción con quienes comparar el sentido del voto.</p>
+    </div>` : "";
+
+  const dissentList=dissentVotes.length ? dissentVotes
+    .sort((a,b)=>String(b.vote["Fecha de votación"]||"").localeCompare(String(a.vote["Fecha de votación"]||"")))
+    .map((item,i)=>{
+      const v=item.vote;
+      const names=item.contra.map(r=>r.Nombre).filter(Boolean);
+      return `<div class="border-t border-slate-100 first:border-t-0">
+        <button type="button" class="lnv-party-dissent-toggle lnv-focus w-full py-3 text-left" data-dissent="${i}" aria-expanded="false">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="text-xs text-slate-500">${lnvEsc(lnvFmtDate(v["Fecha de votación"]))} · Exp. ${lnvEsc(v.Expediente)}</div>
+              <div class="mt-0.5 text-xs font-semibold leading-4 text-slate-800">${lnvEsc(v["Proyecto de ley"])}</div>
+            </div>
+            <span class="shrink-0 rounded-full bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">${names.length} en contra</span>
+          </div>
+          <div class="mt-1 text-[11px] font-semibold text-[#11497d]">Ver quiénes votaron en contra</div>
+        </button>
+        <div id="lnv-party-dissent-${i}" class="lnv-hidden pb-3">
+          <div class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
+            ${names.map(name=>`<div class="py-0.5 font-semibold">${lnvEsc(name)}</div>`).join("")}
+          </div>
+        </div>
+      </div>`;
+    }).join("")
+    : `<div class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">No hay votaciones con votos en contra de esta fracción.</div>`;
 
   document.getElementById("lnv-party-list").innerHTML=`
     <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -731,7 +791,7 @@ function lnvRenderParties() {
       <div class="p-4">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <div class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold shadow-sm" style="background:${lnvPartySurface(code)};color:${p.text||"#fff"}">${lnvEsc(code)}</div>
+            <div class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold shadow-sm" style="background:${badge.background};color:${badge.color}">${lnvEsc(code)}</div>
             <h2 class="mt-2 text-lg font-bold leading-6 text-slate-950">${lnvEsc(p.name)}</h2>
           </div>
           <div class="text-right">
@@ -754,21 +814,45 @@ function lnvRenderParties() {
           </div>
 
           <div class="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div class="absolute inset-y-0 left-0 w-1.5" style="background:${lnvPartySurface(code)}" aria-hidden="true"></div>
+            <div class="absolute inset-y-0 left-0 w-1.5" style="background:${lnvPartyAccent(code)}" aria-hidden="true"></div>
             <div class="pl-1">
-              <div class="text-3xl font-bold tracking-tight text-slate-950">${unanimous}</div>
+              <div class="text-3xl font-bold tracking-tight text-slate-950">${unanimous} <span class="text-lg font-semibold text-slate-400">de ${withEffective}</span></div>
               <div class="mt-1 text-sm font-bold text-slate-800">Votaciones sin división</div>
               <p class="mt-1 text-[11px] leading-4 text-slate-500">Votaciones en las que todos los miembros de la bancada que emitieron voto efectivo coincidieron.</p>
             </div>
           </div>
         </div>
 
+        ${singleMemberNote}
+
         <div class="mt-4 rounded-xl border border-slate-200 p-3">
           <h3 class="text-sm font-bold text-slate-900">Cómo leer estas cifras</h3>
-          <p class="mt-1 text-xs leading-5 text-slate-600">La cohesión se calcula votación por votación y considera únicamente los votos “A favor” y “En contra”. La dona representa ese porcentaje promedio: la parte coloreada muestra la cohesión y la parte gris, la proporción restante. “Votaciones sin división” cuenta las votaciones en las que todos los miembros de la bancada que emitieron un voto efectivo coincidieron.</p>
+          <p class="mt-1 text-xs leading-5 text-slate-600">La cohesión se calcula votación por votación y considera únicamente los votos “A favor” y “En contra”. La dona representa ese porcentaje promedio: la parte coloreada muestra la cohesión y la parte gris, la proporción restante. “Votaciones sin división” compara cuántas votaciones tuvieron acuerdo total dentro de la bancada frente al total de votaciones con al menos un voto efectivo de esa fracción.</p>
+        </div>
+
+        <div class="mt-5">
+          <div class="mb-2 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Votaciones con votos en contra</h3>
+              <p class="mt-0.5 text-xs text-slate-500">Incluye toda votación en la que al menos un diputado de la fracción votó en contra.</p>
+            </div>
+            <span class="text-xs font-semibold text-slate-500">${dissentVotes.length} votación${dissentVotes.length===1?"":"es"}</span>
+          </div>
+          <div class="rounded-xl border border-slate-200 px-3">${dissentList}</div>
         </div>
       </div>
     </article>`;
+
+  document.querySelectorAll(".lnv-party-dissent-toggle").forEach(btn=>btn.addEventListener("click",()=>{
+    const detail=document.getElementById(`lnv-party-dissent-${btn.dataset.dissent}`);
+    if (!detail) return;
+    const willOpen=detail.classList.contains("lnv-hidden");
+    detail.classList.toggle("lnv-hidden");
+    btn.setAttribute("aria-expanded",willOpen?"true":"false");
+    const cue=btn.querySelector(".text-\\[11px\\]");
+    if (cue) cue.textContent=willOpen?"Ocultar votos en contra":"Ver quiénes votaron en contra";
+    lnvResize();
+  }));
 }
 function lnvSetTab(tab) {
   lnvState.tab=tab;
