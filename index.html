@@ -21,6 +21,8 @@
     .lnv-donut-wrap { position:relative; width:156px; height:156px; margin:0 auto; }
     .lnv-donut-center { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; pointer-events:none; }
     .lnv-hidden { display:none !important; }
+    .lnv-date-input { width:100%; max-width:100%; min-width:0; box-sizing:border-box; }
+    .lnv-date-input::-webkit-date-and-time-value { text-align:left; }
     @media (max-width: 420px) {
       .lnv-matrix-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
     }
@@ -66,14 +68,14 @@
     </div>
     <fieldset class="mt-4">
       <legend class="text-xs font-bold uppercase tracking-wide text-slate-700">Por fecha</legend>
-      <div class="mt-2 grid grid-cols-1 gap-2.5 min-[380px]:grid-cols-2">
+      <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label class="min-w-0 text-xs text-slate-600">
           <span class="mb-1 block font-medium">Desde:</span>
-          <input id="lnv-date-from" type="date" class="lnv-focus w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700" aria-label="Fecha inicial">
+          <input id="lnv-date-from" type="date" class="lnv-date-input lnv-focus block w-full min-w-0 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-700 sm:text-sm" aria-label="Fecha inicial">
         </label>
         <label class="min-w-0 text-xs text-slate-600">
           <span class="mb-1 block font-medium">Hasta:</span>
-          <input id="lnv-date-to" type="date" class="lnv-focus w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700" aria-label="Fecha final">
+          <input id="lnv-date-to" type="date" class="lnv-date-input lnv-focus block w-full min-w-0 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-700 sm:text-sm" aria-label="Fecha final">
         </label>
       </div>
       <button id="lnv-clear-dates" class="lnv-focus lnv-hidden mt-2 rounded-lg px-2 py-1 text-xs font-semibold text-[#11497d] hover:bg-slate-100" type="button">Limpiar fechas</button>
