@@ -90,8 +90,11 @@
 
   <section id="lnv-tab-diputados" class="lnv-tab-panel lnv-hidden mt-5">
     <div id="lnv-deputy-detail"></div>
-    <p id="lnv-deputy-count" class="mb-3 text-sm text-slate-500"></p>
-    <div id="lnv-deputy-list" class="grid grid-cols-1 gap-2.5 sm:grid-cols-2"></div>
+    <div class="mb-4">
+      <h2 class="text-base font-bold text-slate-950">Diputados por provincia</h2>
+      <p id="lnv-deputy-count" class="mt-1 text-sm text-slate-500"></p>
+    </div>
+    <div id="lnv-deputy-list" class="space-y-6"></div>
   </section>
 
   <section id="lnv-tab-partidos" class="lnv-tab-panel lnv-hidden mt-5">
@@ -224,6 +227,23 @@ function lnvAvatar(p, size="md") {
 }
 function lnvPartyBars(colors) {
   return `<div class="mt-2 flex gap-1">${colors.map(c=>`<span class="lnv-party-strip flex-1" style="background:${c}"></span>`).join("")}</div>`;
+}
+function lnvPartyBadge(code) {
+  const party=LNV_PARTIES[code]||{primary:"#64748b",colors:["#64748b"],text:"#ffffff"};
+  let background=party.primary;
+
+  // PUSC y CAC usan toda la burbuja para mostrar todos sus colores.
+  // Los demás partidos usan su color principal para mantener legibilidad.
+  if (code==="PUSC" || code==="CAC") {
+    const stops=party.colors.map((color,i)=>{
+      const start=(i/party.colors.length)*100;
+      const end=((i+1)/party.colors.length)*100;
+      return `${color} ${start}%, ${color} ${end}%`;
+    }).join(", ");
+    background=`linear-gradient(90deg, ${stops})`;
+  }
+
+  return `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold leading-4 shadow-sm ring-1 ring-black/5" style="background:${background};color:${party.text||"#ffffff"}">${lnvEsc(code)}</span>`;
 }
 function lnvRenderSummary() {
   const v=lnvData.votaciones, exp=new Set(v.map(x=>x.Expediente).filter(Boolean));
@@ -411,15 +431,61 @@ function lnvDeputyStats(email) {
 function lnvRenderDeputies() {
   const q=lnvNorm(lnvState.query);
   const rows=lnvData.padron.filter(p=>!q || lnvNorm([p.Nombre,p.Provincia,p.Partido,LNV_PARTIES[p.Partido]?.name].join(" ")).includes(q));
+
   document.getElementById("lnv-deputy-count").textContent=`${rows.length} diputado${rows.length===1?"":"s"}`;
-  document.getElementById("lnv-deputy-list").innerHTML=rows.map(p=>{
-    const party=LNV_PARTIES[p.Partido]||{primary:"#64748b",colors:["#64748b"],name:p.Partido};
-    const st=lnvDeputyStats(p.Correo).c;
-    return `<button type="button" class="lnv-deputy lnv-focus rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm" data-email="${lnvEsc(p.Correo)}">
-      <div class="flex items-center gap-3">${lnvAvatar(p)}<div class="min-w-0 flex-1"><div class="text-sm font-bold leading-5 text-slate-950">${lnvEsc(p.Nombre)}</div><div class="mt-0.5 text-xs text-slate-500">${lnvEsc(p.Provincia)} · ${lnvEsc(p.Partido)}</div><div class="mt-2 flex gap-3 text-[11px] text-slate-500"><span><b class="text-slate-800">${st.favor}</b> favor</span><span><b class="text-slate-800">${st.contra}</b> contra</span></div></div></div>
-      ${lnvPartyBars(party.colors)}
-    </button>`;
+
+  const target=document.getElementById("lnv-deputy-list");
+  if (!rows.length) {
+    target.innerHTML=`<div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">No encontramos diputados con esos criterios.</div>`;
+    return;
+  }
+
+  const provinces=[];
+  const grouped=new Map();
+
+  rows.forEach(p=>{
+    const province=String(p.Provincia||"Sin provincia").trim() || "Sin provincia";
+    if (!grouped.has(province)) {
+      grouped.set(province,[]);
+      provinces.push(province);
+    }
+    grouped.get(province).push(p);
+  });
+
+  target.innerHTML=provinces.map(province=>{
+    const deputies=grouped.get(province);
+
+    const cards=deputies.map(p=>{
+      const st=lnvDeputyStats(p.Correo).c;
+      return `<button type="button" class="lnv-deputy lnv-focus w-full rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-slate-300 hover:shadow" data-email="${lnvEsc(p.Correo)}">
+        <div class="flex items-center gap-3">
+          ${lnvAvatar(p)}
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-bold leading-5 text-slate-950">${lnvEsc(p.Nombre)}</div>
+            <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+              <span>${lnvEsc(p.Provincia)}</span>
+              <span aria-hidden="true">·</span>
+              ${lnvPartyBadge(p.Partido)}
+            </div>
+            <div class="mt-2 flex gap-3 text-[11px] text-slate-500">
+              <span><b class="text-slate-800">${st.favor}</b> favor</span>
+              <span><b class="text-slate-800">${st.contra}</b> contra</span>
+            </div>
+          </div>
+          <span class="shrink-0 text-lg leading-none text-slate-300" aria-hidden="true">›</span>
+        </div>
+      </button>`;
+    }).join("");
+
+    return `<section class="lnv-province-group" aria-labelledby="lnv-province-${lnvEsc(lnvNorm(province).replace(/[^a-z0-9]+/g,"-"))}">
+      <div class="mb-2 flex items-end justify-between gap-3 border-b border-slate-300 pb-2">
+        <h3 id="lnv-province-${lnvEsc(lnvNorm(province).replace(/[^a-z0-9]+/g,"-"))}" class="text-sm font-bold uppercase tracking-wide text-slate-800">${lnvEsc(province)}</h3>
+        <span class="text-xs text-slate-500">${deputies.length} diputado${deputies.length===1?"":"s"}</span>
+      </div>
+      <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">${cards}</div>
+    </section>`;
   }).join("");
+
   document.querySelectorAll(".lnv-deputy").forEach(b=>b.addEventListener("click",()=>lnvShowDeputy(b.dataset.email)));
 }
 function lnvShowDeputy(email) {
@@ -429,7 +495,7 @@ function lnvShowDeputy(email) {
   const history=[...st.rows].sort((a,b)=>String(b["Fecha de votación"]).localeCompare(String(a["Fecha de votación"]))).map(r=>`<div class="border-t border-slate-100 py-2.5"><div class="flex items-start justify-between gap-3"><div><div class="text-xs text-slate-500">${lnvEsc(lnvFmtDate(r["Fecha de votación"]))} · Exp. ${lnvEsc(r.Expediente)}</div><div class="mt-0.5 text-xs font-semibold leading-4 text-slate-800">${lnvEsc(r["Proyecto de ley"])}</div></div><span class="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${r.Voto==="A favor"?"bg-emerald-50 text-emerald-700":r.Voto==="En contra"?"bg-rose-50 text-rose-700":"bg-slate-100 text-slate-600"}">${lnvEsc(r.Voto)}</span></div></div>`).join("");
   const box=document.getElementById("lnv-deputy-detail");
   box.innerHTML=`<article class="mb-4 rounded-2xl border-2 border-slate-300 bg-white p-4">
-    <div class="flex items-start gap-3">${lnvAvatar(p,"lg")}<div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><h2 class="text-lg font-bold leading-6 text-slate-950">${lnvEsc(p.Nombre)}</h2><p class="text-xs text-slate-500">${lnvEsc(p.Provincia)} · ${lnvEsc(p.Partido)} · ${lnvEsc(party.name)}</p></div><button id="lnv-close-deputy" class="lnv-focus shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" type="button">Cerrar</button></div>${lnvPartyBars(party.colors)}</div></div>
+    <div class="flex items-start gap-3">${lnvAvatar(p,"lg")}<div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><h2 class="text-lg font-bold leading-6 text-slate-950">${lnvEsc(p.Nombre)}</h2><div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500"><span>${lnvEsc(p.Provincia)}</span><span aria-hidden="true">·</span>${lnvPartyBadge(p.Partido)}<span>${lnvEsc(party.name)}</span></div></div><button id="lnv-close-deputy" class="lnv-focus shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" type="button">Cerrar</button></div></div></div>
     <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4"><div class="rounded-lg bg-emerald-50 p-2.5"><b class="text-xl text-emerald-800">${st.c.favor}</b><div class="text-xs text-emerald-700">A favor</div></div><div class="rounded-lg bg-rose-50 p-2.5"><b class="text-xl text-rose-800">${st.c.contra}</b><div class="text-xs text-rose-700">En contra</div></div><div class="rounded-lg bg-slate-100 p-2.5"><b class="text-xl text-slate-700">${st.c.no}</b><div class="text-xs text-slate-600">Presente, no votó</div></div><div class="rounded-lg bg-slate-50 p-2.5"><b class="text-xl text-slate-500">${st.c.nr}</b><div class="text-xs text-slate-500">Ausente en la sesión</div></div></div>
     <div class="mt-4"><h3 class="text-sm font-bold text-slate-900">Historial de votaciones</h3><div class="mt-1 max-h-[420px] overflow-y-auto pr-1">${history}</div></div>
   </article>`;
