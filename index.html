@@ -121,7 +121,7 @@ const LNV_PARTIES = {
   PPSO: { name:"Partido Pueblo Soberano", colors:["#03a4b6"], primary:"#03a4b6", text:"#ffffff" },
   PLN:  { name:"Partido Liberación Nacional", colors:["#33903f"], primary:"#33903f", text:"#ffffff" },
   PFA:  { name:"Partido Frente Amplio", colors:["#fede29","#000000"], primary:"#fede29", text:"#000000" },
-  PUSC: { name:"Partido Unidad Social Cristiana", colors:["#052bbc","#e90004"], primary:"#052bbc", text:"#ffffff" },
+  PUSC: { name:"Partido Unidad Social Cristiana", colors:["#e90004","#052bbc"], primary:"#e90004", text:"#ffffff" },
   CAC:  { name:"Coalición Agenda Ciudadana", colors:["#fbbd16","#14928a","#e02329"], primary:"#14928a", text:"#ffffff" }
 };
 
@@ -655,27 +655,37 @@ function lnvRenderParties() {
   }
   if (!partyCodes.includes(lnvState.party)) lnvState.party=partyCodes[0];
 
+  const lnvPartySurface=(code)=>{
+    const p=LNV_PARTIES[code];
+    if (!p || !p.colors?.length) return "#64748b";
+    if (p.colors.length===1) return p.colors[0];
+    const stops=p.colors.map((color,i)=>{
+      const a=(i/p.colors.length)*100, b=((i+1)/p.colors.length)*100;
+      return `${color} ${a}%, ${color} ${b}%`;
+    }).join(", ");
+    return `linear-gradient(90deg, ${stops})`;
+  };
+
   const selector=document.getElementById("lnv-party-selector");
   selector.innerHTML=partyCodes.map(code=>{
-    const on=code===lnvState.party;
-    return `<button type="button" class="lnv-party-pick lnv-focus shrink-0 rounded-full border px-3 py-2 text-xs font-bold ${on?"bg-[#11497d] text-white border-[#11497d]":"bg-white text-slate-700 border-slate-300"}" data-party="${code}">${lnvEsc(code)}</button>`;
+    const on=code===lnvState.party, p=LNV_PARTIES[code];
+    return `<button type="button"
+      class="lnv-party-pick lnv-focus shrink-0 cursor-pointer rounded-full border px-3 py-2 text-xs font-bold shadow-sm transition ${on?"ring-2 ring-[#11497d] ring-offset-2":"border-slate-300 hover:shadow-md"}"
+      style="background:${lnvPartySurface(code)};color:${p.text||"#fff"};border-color:${p.primary}"
+      data-party="${code}" aria-pressed="${on?"true":"false"}">${lnvEsc(code)}</button>`;
   }).join("");
+
   selector.querySelectorAll(".lnv-party-pick").forEach(b=>b.addEventListener("click",()=>{
     lnvState.party=b.dataset.party;
     lnvRenderParties();
-    b.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
+    const selected=selector.querySelector(`[data-party="${CSS.escape(lnvState.party)}"]`);
+    selected?.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
     lnvResize();
   }));
 
   const code=lnvState.party, p=LNV_PARTIES[code];
   const members=lnvData.padron.filter(x=>x.Partido===code);
   const all=lnvData.votos.filter(x=>x.Partido===code);
-  const favor=all.filter(x=>x.Voto==="A favor").length;
-  const contra=all.filter(x=>x.Voto==="En contra").length;
-  const nov=all.filter(x=>x.Voto==="No votó").length;
-  const nr=all.filter(x=>x.Voto==="No registrado").length;
-  const effective=favor+contra;
-  const participation=all.length ? effective/all.length : 0;
 
   const cohValues=[];
   let unanimous=0;
@@ -691,59 +701,40 @@ function lnvRenderParties() {
   }
   const avg=cohValues.length ? cohValues.reduce((a,b)=>a+b,0)/cohValues.length : null;
 
-  const donutParts=[
-    {label:"A favor", value:favor, color:"#166534"},
-    {label:"En contra", value:contra, color:"#b91c1c"},
-    {label:"Presente, no votó", value:nov, color:"#94a3b8"},
-    {label:"Ausente en la sesión", value:nr, color:"#e2e8f0"}
-  ];
-  const total=all.length || 1;
-  const legend=donutParts.map(x=>`
-    <div class="flex items-center justify-between gap-3 text-xs">
-      <span class="flex items-center gap-2 text-slate-600"><i class="lnv-vote-dot" style="background:${x.color}"></i>${x.label}</span>
-      <span class="font-semibold text-slate-900">${x.value} <span class="font-normal text-slate-500">(${Math.round(x.value/total*100)}%)</span></span>
-    </div>`).join("");
-
   document.getElementById("lnv-party-list").innerHTML=`
-    <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="flex items-start justify-between gap-3">
-        <div><div class="text-2xl font-bold text-slate-950">${lnvEsc(code)}</div><div class="text-sm text-slate-600">${lnvEsc(p.name)}</div></div>
-        <div class="text-right"><div class="text-2xl font-bold text-slate-950">${members.length}</div><div class="text-[10px] uppercase tracking-wide text-slate-500">diputados</div></div>
-      </div>
-      ${lnvPartyBars(p.colors)}
+    <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div class="h-2 w-full" style="background:${lnvPartySurface(code)}" aria-hidden="true"></div>
 
-      <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-[190px_1fr] sm:items-center">
-        <div>
-          <div class="lnv-donut-wrap">
-            ${lnvDonutSVG(donutParts)}
-            <div class="lnv-donut-center"><div class="text-2xl font-bold text-slate-950">${all.length}</div><div class="text-[10px] uppercase tracking-wide text-slate-500">registros</div></div>
+      <div class="p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold shadow-sm" style="background:${lnvPartySurface(code)};color:${p.text||"#fff"}">${lnvEsc(code)}</div>
+            <h2 class="mt-2 text-lg font-bold leading-6 text-slate-950">${lnvEsc(p.name)}</h2>
           </div>
-          <p class="mt-2 text-center text-xs font-semibold text-slate-700">Cómo se distribuyen sus votos</p>
+          <div class="text-right">
+            <div class="text-2xl font-bold text-slate-950">${members.length}</div>
+            <div class="text-[10px] uppercase tracking-wide text-slate-500">diputados</div>
+          </div>
         </div>
-        <div class="space-y-2.5">${legend}</div>
-      </div>
 
-      <div class="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-        <div class="rounded-xl bg-slate-50 p-3">
-          <div class="text-2xl font-bold text-slate-950">${Math.round(participation*100)}%</div>
-          <div class="mt-0.5 text-xs font-semibold text-slate-700">Participación efectiva</div>
-          <p class="mt-1 text-[11px] leading-4 text-slate-500">${effective} votos a favor o en contra de ${all.length} registros de la bancada.</p>
-        </div>
-        <div class="rounded-xl bg-slate-50 p-3">
-          <div class="text-2xl font-bold text-slate-950">${avg==null?"—":Math.round(avg*100)+"%"}</div>
-          <div class="mt-0.5 text-xs font-semibold text-slate-700">Cohesión promedio</div>
-          <p class="mt-1 text-[11px] leading-4 text-slate-500">Promedio de diputados que coincidieron con la mayoría de su bancada en cada votación.</p>
-        </div>
-        <div class="rounded-xl bg-slate-50 p-3">
-          <div class="text-2xl font-bold text-slate-950">${unanimous} de ${withEffective}</div>
-          <div class="mt-0.5 text-xs font-semibold text-slate-700">Votaciones sin división</div>
-          <p class="mt-1 text-[11px] leading-4 text-slate-500">Votaciones donde todos los miembros que emitieron voto efectivo coincidieron.</p>
-        </div>
-      </div>
+        <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div class="text-3xl font-bold tracking-tight text-slate-950">${avg==null?"—":Math.round(avg*100)+"%"}</div>
+            <div class="mt-1 text-sm font-bold text-slate-800">Cohesión promedio</div>
+            <p class="mt-1 text-[11px] leading-4 text-slate-500">Promedio de diputados que coincidieron con la mayoría de su bancada en cada votación.</p>
+          </div>
 
-      <div class="mt-4 rounded-xl border border-slate-200 p-3">
-        <h3 class="text-sm font-bold text-slate-900">Cómo leer estas cifras</h3>
-        <p class="mt-1 text-xs leading-5 text-slate-600">La dona suma todos los registros individuales de esta bancada. “Presente, no votó” corresponde a diputaciones que estaban en la sesión pero no emitieron voto; “Ausente en la sesión” corresponde a quienes no estaban presentes. La cohesión se calcula votación por votación y solo considera “A favor” y “En contra”.</p>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div class="text-3xl font-bold tracking-tight text-slate-950">${unanimous}</div>
+            <div class="mt-1 text-sm font-bold text-slate-800">Votaciones sin división</div>
+            <p class="mt-1 text-[11px] leading-4 text-slate-500">Votaciones en las que todos los miembros de la bancada que emitieron voto efectivo coincidieron.</p>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-xl border border-slate-200 p-3">
+          <h3 class="text-sm font-bold text-slate-900">Cómo leer estas cifras</h3>
+          <p class="mt-1 text-xs leading-5 text-slate-600">La cohesión se calcula votación por votación y considera únicamente los votos “A favor” y “En contra”. “Votaciones sin división” cuenta las votaciones en las que todos los miembros de la bancada que emitieron un voto efectivo coincidieron.</p>
+        </div>
       </div>
     </article>`;
 }
