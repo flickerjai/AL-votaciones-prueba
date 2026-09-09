@@ -204,10 +204,22 @@ function lnvCohesion(rows, party) {
   const n=a+b;
   return n ? Math.max(a,b)/n : null;
 }
+function lnvPhotoUrl(p) {
+  if (!p) return "";
+  const aliases=["foto","fotografia","fotografía","foto url","url foto","url de foto","imagen","imagen url"];
+  const keys=Object.keys(p);
+  for (const alias of aliases) {
+    const key=keys.find(k=>lnvNorm(k)===lnvNorm(alias));
+    const value=key ? String(p[key]||"").trim() : "";
+    if (value) return value;
+  }
+  return "";
+}
 function lnvAvatar(p, size="md") {
   const dims=size==="lg"?"h-20 w-20":"h-12 w-12";
-  const img=p.Foto ? `<img src="${lnvEsc(p.Foto)}" alt="" class="${dims} rounded-full object-cover border border-slate-200" onerror="this.classList.add('lnv-hidden');this.nextElementSibling.classList.remove('lnv-hidden')">` : "";
-  const hide=p.Foto?"lnv-hidden":"";
+  const photo=lnvPhotoUrl(p);
+  const img=photo ? `<img src="${lnvEsc(photo)}" alt="" referrerpolicy="no-referrer" loading="lazy" class="${dims} rounded-full object-cover border border-slate-200" onerror="this.classList.add('lnv-hidden');this.nextElementSibling.classList.remove('lnv-hidden')">` : "";
+  const hide=photo?"lnv-hidden":"";
   return `<div class="relative shrink-0">${img}<div class="${hide} lnv-avatar-fallback ${dims} flex items-center justify-center rounded-full border border-slate-200 text-sm font-bold">${lnvEsc(lnvInitials(p.Nombre))}</div></div>`;
 }
 function lnvPartyBars(colors) {
@@ -354,7 +366,7 @@ function lnvShowVote(id) {
       const voteRing=r.Voto==="A favor"?"border-emerald-500":r.Voto==="En contra"?"border-rose-500":r.Voto==="No votó"?"border-slate-400":"border-slate-200";
       return `<button class="lnv-matrix-person lnv-focus rounded-lg border border-slate-200 bg-slate-50 px-1.5 py-1.5 text-center transition hover:border-slate-300 hover:bg-slate-100" data-email="${lnvEsc(r.Correo)}" title="${lnvEsc(r.Nombre)} — ${lnvEsc(r.Voto)}" type="button">
         <div class="mx-auto h-11 w-11 rounded-full border-[3px] ${voteRing} bg-white p-[2px] shadow-sm">
-          <div class="h-full w-full overflow-hidden rounded-full bg-white">${pad.Foto?`<img src="${lnvEsc(pad.Foto)}" alt="" class="h-full w-full object-cover" onerror="this.remove()">`:""}</div>
+          <div class="h-full w-full overflow-hidden rounded-full bg-white">${lnvPhotoUrl(pad)?`<img src="${lnvEsc(lnvPhotoUrl(pad))}" alt="" referrerpolicy="no-referrer" loading="lazy" class="h-full w-full object-cover" onerror="this.remove()">`:""}</div>
         </div>
         <div class="mt-1 min-h-[2rem] text-[10px] font-semibold leading-[1.1] text-slate-800 lnv-clamp-2">${lnvEsc(r.Nombre)}</div>
         <span class="sr-only">${lnvEsc(r.Nombre)}: ${lnvEsc(r.Voto)}</span>
