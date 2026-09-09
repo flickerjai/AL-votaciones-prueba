@@ -226,12 +226,49 @@ function lnvRenderSummary() {
   // La fecha de actualización corresponde al acta más reciente cargada,
   // no simplemente a la última votación por fecha.
   const withActa=v.filter(x=>String(x["Número de acta"]||"").trim()!=="");
-  const latestActa=withActa.sort((a,b)=>{
-    const na=parseInt(String(a["Número de acta"]||"").replace(/\D/g,""),10);
-    const nb=parseInt(String(b["Número de acta"]||"").replace(/\D/g,""),10);
-    if (!Number.isNaN(na) && !Number.isNaN(nb) && na!==nb) return nb-na;
-    return String(b["Fecha de votación"]||"").localeCompare(String(a["Fecha de votación"]||""));
-  })[0];
+
+  function lnvActaNumber(value) {
+    const s=String(value||"").trim();
+    const m=s.match(/\d+/);
+    return m ? Number(m[0]) : null;
+  }
+
+  function lnvSessionKind(value) {
+    const s=lnvNorm(value);
+    if (s.includes("extraordin")) return "extraordinaria";
+    if (s.includes("ordin")) return "ordinaria";
+    return "otra";
+  }
+
+  const validActas=withActa
+    .map(row=>({
+      row,
+      num:lnvActaNumber(row["Número de acta"]),
+      kind:lnvSessionKind(row["Tipo de sesión"])
+    }))
+    .filter(x=>Number.isFinite(x.num));
+
+  // Las sesiones ordinarias y extraordinarias pueden llevar numeraciones
+  // de acta independientes. Por eso se busca primero el acta más alta
+  // dentro de cada tipo de sesión y luego se compara la fecha de ambas.
+  const latestByKind=["ordinaria","extraordinaria"]
+    .map(kind=>{
+      const subset=validActas.filter(x=>x.kind===kind);
+      if (!subset.length) return null;
+
+      const maxActa=Math.max(...subset.map(x=>x.num));
+      const rowsOfMax=subset
+        .filter(x=>x.num===maxActa)
+        .map(x=>x.row)
+        .sort((a,b)=>String(b["Fecha de votación"]||"").localeCompare(String(a["Fecha de votación"]||"")));
+
+      return rowsOfMax[0] || null;
+    })
+    .filter(Boolean);
+
+  const latestActa=latestByKind
+    .sort((a,b)=>String(b["Fecha de votación"]||"").localeCompare(String(a["Fecha de votación"]||"")))[0] || null;
+
   document.getElementById("lnv-updated").textContent=latestActa?.["Fecha de votación"]
     ? "Base de datos actualizada a la fecha: "+lnvFmtDate(latestActa["Fecha de votación"])
     : "";
