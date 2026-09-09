@@ -101,7 +101,7 @@
   </section>
 
   <section id="lnv-tab-partidos" class="lnv-tab-panel lnv-hidden mt-5">
-    <p class="mb-3 text-sm leading-5 text-slate-600">Seleccione una bancada para ver cómo ha votado, su nivel de participación y qué tan frecuentemente sus diputados coincidieron entre sí.</p>
+    <p class="mb-3 text-sm leading-5 text-slate-600">Seleccione una bancada para ver qué tan cohesionados estuvieron sus diputados y cuántas votaciones resolvieron sin división.</p>
     <div id="lnv-party-selector" class="lnv-scrollbar flex gap-2 overflow-x-auto pb-2" aria-label="Seleccionar partido"></div>
     <div id="lnv-party-list" class="mt-4"></div>
   </section>
@@ -666,12 +666,38 @@ function lnvRenderParties() {
     return `linear-gradient(90deg, ${stops})`;
   };
 
+  const lnvCohesionDonut=(code,value)=>{
+    const p=LNV_PARTIES[code];
+    const pct=Math.max(0,Math.min(1,value||0));
+    const colors=p?.colors?.length ? p.colors : ["#64748b"];
+    const activePct=pct*100;
+    const stops=[];
+
+    if (activePct>0) {
+      colors.forEach((color,i)=>{
+        const a=(i/colors.length)*activePct;
+        const b=((i+1)/colors.length)*activePct;
+        stops.push(`${color} ${a}%`,`${color} ${b}%`);
+      });
+    }
+    stops.push(`#e2e8f0 ${activePct}%`,`#e2e8f0 100%`);
+
+    return `<div class="relative mx-auto h-32 w-32 shrink-0 rounded-full" style="background:conic-gradient(${stops.join(",")})" role="img" aria-label="Cohesión promedio ${Math.round(pct*100)}%">
+      <div class="absolute inset-[14px] flex items-center justify-center rounded-full bg-white">
+        <div class="text-center">
+          <div class="text-2xl font-bold tracking-tight text-slate-950">${Math.round(pct*100)}%</div>
+          <div class="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">cohesión</div>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  // El selector vuelve al estilo institucional: azul La Nación para la opción activa.
   const selector=document.getElementById("lnv-party-selector");
   selector.innerHTML=partyCodes.map(code=>{
-    const on=code===lnvState.party, p=LNV_PARTIES[code];
+    const on=code===lnvState.party;
     return `<button type="button"
-      class="lnv-party-pick lnv-focus shrink-0 cursor-pointer rounded-full border px-3 py-2 text-xs font-bold shadow-sm transition ${on?"ring-2 ring-[#11497d] ring-offset-2":"border-slate-300 hover:shadow-md"}"
-      style="background:${lnvPartySurface(code)};color:${p.text||"#fff"};border-color:${p.primary}"
+      class="lnv-party-pick lnv-focus shrink-0 cursor-pointer rounded-full border px-3 py-2 text-xs font-bold shadow-sm transition ${on?"border-[#11497d] bg-[#11497d] text-white":"border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:shadow-md"}"
       data-party="${code}" aria-pressed="${on?"true":"false"}">${lnvEsc(code)}</button>`;
   }).join("");
 
@@ -685,16 +711,13 @@ function lnvRenderParties() {
 
   const code=lnvState.party, p=LNV_PARTIES[code];
   const members=lnvData.padron.filter(x=>x.Partido===code);
-  const all=lnvData.votos.filter(x=>x.Partido===code);
 
   const cohValues=[];
   let unanimous=0;
-  let withEffective=0;
   for (const v of lnvData.votaciones) {
     const rows=lnvData._byVote.get(v["ID de votación"])||[];
     const partyRows=rows.filter(r=>r.Partido===code && (r.Voto==="A favor" || r.Voto==="En contra"));
     if (!partyRows.length) continue;
-    withEffective++;
     const coh=lnvCohesion(rows,code);
     cohValues.push(coh);
     if (coh===1) unanimous++;
@@ -719,21 +742,30 @@ function lnvRenderParties() {
 
         <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div class="text-3xl font-bold tracking-tight text-slate-950">${avg==null?"—":Math.round(avg*100)+"%"}</div>
-            <div class="mt-1 text-sm font-bold text-slate-800">Cohesión promedio</div>
-            <p class="mt-1 text-[11px] leading-4 text-slate-500">Promedio de diputados que coincidieron con la mayoría de su bancada en cada votación.</p>
+            <div class="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
+              ${avg==null
+                ? `<div class="flex h-32 w-32 items-center justify-center rounded-full border-[14px] border-slate-200 bg-white text-2xl font-bold text-slate-400">—</div>`
+                : lnvCohesionDonut(code,avg)}
+              <div class="text-center sm:text-left">
+                <div class="text-sm font-bold text-slate-800">Cohesión promedio</div>
+                <p class="mt-1 text-[11px] leading-4 text-slate-500">Porcentaje promedio de diputados que coincidieron con la mayoría de su bancada en cada votación.</p>
+              </div>
+            </div>
           </div>
 
-          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div class="text-3xl font-bold tracking-tight text-slate-950">${unanimous}</div>
-            <div class="mt-1 text-sm font-bold text-slate-800">Votaciones sin división</div>
-            <p class="mt-1 text-[11px] leading-4 text-slate-500">Votaciones en las que todos los miembros de la bancada que emitieron voto efectivo coincidieron.</p>
+          <div class="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div class="absolute inset-y-0 left-0 w-1.5" style="background:${lnvPartySurface(code)}" aria-hidden="true"></div>
+            <div class="pl-1">
+              <div class="text-3xl font-bold tracking-tight text-slate-950">${unanimous}</div>
+              <div class="mt-1 text-sm font-bold text-slate-800">Votaciones sin división</div>
+              <p class="mt-1 text-[11px] leading-4 text-slate-500">Votaciones en las que todos los miembros de la bancada que emitieron voto efectivo coincidieron.</p>
+            </div>
           </div>
         </div>
 
         <div class="mt-4 rounded-xl border border-slate-200 p-3">
           <h3 class="text-sm font-bold text-slate-900">Cómo leer estas cifras</h3>
-          <p class="mt-1 text-xs leading-5 text-slate-600">La cohesión se calcula votación por votación y considera únicamente los votos “A favor” y “En contra”. “Votaciones sin división” cuenta las votaciones en las que todos los miembros de la bancada que emitieron un voto efectivo coincidieron.</p>
+          <p class="mt-1 text-xs leading-5 text-slate-600">La cohesión se calcula votación por votación y considera únicamente los votos “A favor” y “En contra”. La dona representa ese porcentaje promedio: la parte coloreada muestra la cohesión y la parte gris, la proporción restante. “Votaciones sin división” cuenta las votaciones en las que todos los miembros de la bancada que emitieron un voto efectivo coincidieron.</p>
         </div>
       </div>
     </article>`;
