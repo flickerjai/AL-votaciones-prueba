@@ -36,6 +36,10 @@
     <h1 class="mt-1 text-[27px] font-bold leading-tight tracking-tight text-slate-950 sm:text-[32px]">Explorador de votaciones</h1>
     <p class="mt-2 max-w-2xl text-[15px] leading-6 text-slate-600">Consulte cómo se votaron los proyectos en primer y segundo debate, cómo votó cada diputado y qué tan cohesionadas estuvieron las bancadas.</p>
     <p id="lnv-updated" class="mt-2 text-xs text-slate-500"></p>
+    <div id="lnv-acta-debug" class="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950" aria-live="polite">
+      <strong class="font-bold">Diagnóstico de actas:</strong>
+      <div id="lnv-acta-debug-content" class="mt-1">Cargando…</div>
+    </div>
   </header>
 
   <section aria-label="Resumen" class="grid grid-cols-2 gap-2.5 sm:grid-cols-4" id="lnv-summary"></section>
@@ -258,26 +262,41 @@ function lnvRenderSummary() {
 
       const maxActa=Math.max(...subset.map(x=>x.num));
 
-      // Puede haber varias votaciones dentro de la misma acta.
-      // Se toma la fecha cronológicamente más reciente de esa acta,
-      // normalizando antes el formato recibido desde Google Sheets.
       const rowsOfMax=subset
         .filter(x=>x.num===maxActa)
         .map(x=>x.row)
         .sort((a,b)=>lnvDateISO(b["Fecha de votación"]).localeCompare(lnvDateISO(a["Fecha de votación"])));
 
-      return rowsOfMax[0] || null;
+      const row=rowsOfMax[0] || null;
+      return row ? {kind, maxActa, row} : null;
     })
     .filter(Boolean);
 
-  // Compara cronológicamente las dos candidatas:
-  // acta ordinaria más alta vs. acta extraordinaria más alta.
-  const latestActa=latestByKind
-    .sort((a,b)=>lnvDateISO(b["Fecha de votación"]).localeCompare(lnvDateISO(a["Fecha de votación"])))[0] || null;
+  const latestCandidate=latestByKind
+    .slice()
+    .sort((a,b)=>lnvDateISO(b.row["Fecha de votación"]).localeCompare(lnvDateISO(a.row["Fecha de votación"])))[0] || null;
+
+  const latestActa=latestCandidate?.row || null;
 
   document.getElementById("lnv-updated").textContent=latestActa?.["Fecha de votación"]
     ? "Base de datos actualizada a la fecha: "+lnvFmtDate(latestActa["Fecha de votación"])
     : "";
+
+  const debug=document.getElementById("lnv-acta-debug-content");
+  if (debug) {
+    const ord=latestByKind.find(x=>x.kind==="ordinaria");
+    const ext=latestByKind.find(x=>x.kind==="extraordinaria");
+
+    const fmtCandidate=(item)=> item
+      ? `Acta ${item.maxActa} · fecha cruda: ${item.row["Fecha de votación"] || "—"} · normalizada: ${lnvDateISO(item.row["Fecha de votación"]) || "—"}`
+      : "Sin actas detectadas";
+
+    debug.innerHTML=`
+      <div><strong>Ordinaria:</strong> ${fmtCandidate(ord)}</div>
+      <div><strong>Extraordinaria:</strong> ${fmtCandidate(ext)}</div>
+      <div><strong>Elegida:</strong> ${latestCandidate ? `${latestCandidate.kind} · acta ${latestCandidate.maxActa} · ${latestCandidate.row["Fecha de votación"] || "—"} · ${lnvDateISO(latestCandidate.row["Fecha de votación"]) || "—"}` : "Ninguna"}</div>
+    `;
+  }
 }
 function lnvDateISO(value) {
   const s=String(value||"").trim();
