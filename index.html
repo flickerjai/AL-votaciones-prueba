@@ -680,22 +680,13 @@ function lnvRenderParties() {
   };
 
   const lnvCohesionDonut=(code,value)=>{
-    const p=LNV_PARTIES[code];
     const pct=Math.max(0,Math.min(1,value||0));
-    const colors=p?.colors?.length ? p.colors : ["#64748b"];
     const activePct=pct*100;
-    const stops=[];
+    const accent=lnvPartyAccent(code);
 
-    if (activePct>0) {
-      colors.forEach((color,i)=>{
-        const a=(i/colors.length)*activePct;
-        const b=((i+1)/colors.length)*activePct;
-        stops.push(`${color} ${a}%`,`${color} ${b}%`);
-      });
-    }
-    stops.push(`#e2e8f0 ${activePct}%`,`#e2e8f0 100%`);
-
-    return `<div class="relative mx-auto h-32 w-32 shrink-0 rounded-full" style="background:conic-gradient(${stops.join(",")})" role="img" aria-label="Cohesión promedio ${Math.round(pct*100)}%">
+    return `<div class="relative mx-auto h-32 w-32 shrink-0 rounded-full"
+      style="background:conic-gradient(${accent} 0 ${activePct}%, #e2e8f0 ${activePct}% 100%)"
+      role="img" aria-label="Cohesión promedio ${Math.round(pct*100)}%">
       <div class="absolute inset-[14px] flex items-center justify-center rounded-full bg-white">
         <div class="text-center">
           <div class="text-2xl font-bold tracking-tight text-slate-950">${Math.round(pct*100)}%</div>
@@ -827,7 +818,7 @@ function lnvRenderParties() {
 
         <div class="mt-4 rounded-xl border border-slate-200 p-3">
           <h3 class="text-sm font-bold text-slate-900">Cómo leer estas cifras</h3>
-          <p class="mt-1 text-xs leading-5 text-slate-600">La cohesión se calcula votación por votación y considera únicamente los votos “A favor” y “En contra”. La dona representa ese porcentaje promedio: la parte coloreada muestra la cohesión y la parte gris, la proporción restante. “Votaciones sin división” compara cuántas votaciones tuvieron acuerdo total dentro de la bancada frente al total de votaciones con al menos un voto efectivo de esa fracción.</p>
+          <p class="mt-1 text-xs leading-5 text-slate-600">La cohesión se calcula votación por votación y considera únicamente los votos “A favor” y “En contra”. La dona usa un solo color por partido: la parte coloreada muestra la cohesión promedio y la parte gris, la proporción restante hasta 100%. “Votaciones sin división” compara cuántas votaciones tuvieron acuerdo total dentro de la bancada frente al total de votaciones con al menos un voto efectivo de esa fracción.</p>
         </div>
 
         <div class="mt-5">
