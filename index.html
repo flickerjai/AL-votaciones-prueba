@@ -542,20 +542,23 @@ function lnvShowDeputy(email) {
       </div>
     </div>
 
-    <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Filtrar historial por tipo de voto">
-      <button type="button" class="lnv-deputy-vote-filter lnv-focus rounded-lg border border-transparent bg-emerald-50 p-2.5 text-left transition hover:border-emerald-300" data-vote-filter="favor" aria-pressed="false">
+    <div class="mt-4 flex items-center justify-between gap-3">
+      <p class="text-xs font-semibold text-slate-600">Toque una categoría para filtrar el historial</p>
+    </div>
+    <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Filtrar historial por tipo de voto">
+      <button type="button" class="lnv-deputy-vote-filter lnv-focus cursor-pointer rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-md active:translate-y-0" data-vote-filter="favor" aria-pressed="false">
         <b class="text-xl text-emerald-800">${st.c.favor}</b>
         <div class="text-xs text-emerald-700">A favor</div>
       </button>
-      <button type="button" class="lnv-deputy-vote-filter lnv-focus rounded-lg border border-transparent bg-rose-50 p-2.5 text-left transition hover:border-rose-300" data-vote-filter="contra" aria-pressed="false">
+      <button type="button" class="lnv-deputy-vote-filter lnv-focus cursor-pointer rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-rose-400 hover:shadow-md active:translate-y-0" data-vote-filter="contra" aria-pressed="false">
         <b class="text-xl text-rose-800">${st.c.contra}</b>
         <div class="text-xs text-rose-700">En contra</div>
       </button>
-      <button type="button" class="lnv-deputy-vote-filter lnv-focus rounded-lg border border-transparent bg-slate-100 p-2.5 text-left transition hover:border-slate-400" data-vote-filter="no" aria-pressed="false">
+      <button type="button" class="lnv-deputy-vote-filter lnv-focus cursor-pointer rounded-lg border border-slate-300 bg-slate-100 p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-500 hover:shadow-md active:translate-y-0" data-vote-filter="no" aria-pressed="false">
         <b class="text-xl text-slate-700">${st.c.no}</b>
         <div class="text-xs text-slate-600">Presente, no votó</div>
       </button>
-      <button type="button" class="lnv-deputy-vote-filter lnv-focus rounded-lg border border-transparent bg-slate-50 p-2.5 text-left transition hover:border-slate-400" data-vote-filter="nr" aria-pressed="false">
+      <button type="button" class="lnv-deputy-vote-filter lnv-focus cursor-pointer rounded-lg border border-slate-300 bg-slate-50 p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-500 hover:shadow-md active:translate-y-0" data-vote-filter="nr" aria-pressed="false">
         <b class="text-xl text-slate-500">${st.c.nr}</b>
         <div class="text-xs text-slate-500">Ausente en la sesión</div>
       </button>
