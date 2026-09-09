@@ -223,8 +223,18 @@ function lnvRenderSummary() {
     ["Expedientes",exp.size]
   ];
   document.getElementById("lnv-summary").innerHTML=cards.map(([l,n])=>`<article class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-2xl font-bold tracking-tight text-slate-950">${n}</div><div class="mt-0.5 text-xs font-medium text-slate-500">${l}</div></article>`).join("");
-  const dates=v.map(x=>x["Fecha de votación"]).filter(Boolean).sort();
-  document.getElementById("lnv-updated").textContent=dates.length ? "Última votación registrada: "+lnvFmtDate(dates.at(-1)) : "";
+  // La fecha de actualización corresponde al acta más reciente cargada,
+  // no simplemente a la última votación por fecha.
+  const withActa=v.filter(x=>String(x["Número de acta"]||"").trim()!=="");
+  const latestActa=withActa.sort((a,b)=>{
+    const na=parseInt(String(a["Número de acta"]||"").replace(/\D/g,""),10);
+    const nb=parseInt(String(b["Número de acta"]||"").replace(/\D/g,""),10);
+    if (!Number.isNaN(na) && !Number.isNaN(nb) && na!==nb) return nb-na;
+    return String(b["Fecha de votación"]||"").localeCompare(String(a["Fecha de votación"]||""));
+  })[0];
+  document.getElementById("lnv-updated").textContent=latestActa?.["Fecha de votación"]
+    ? "Base de datos actualizada a la fecha: "+lnvFmtDate(latestActa["Fecha de votación"])
+    : "";
 }
 function lnvDateISO(value) {
   const s=String(value||"").trim();
