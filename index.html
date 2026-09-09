@@ -36,10 +36,6 @@
     <h1 class="mt-1 text-[27px] font-bold leading-tight tracking-tight text-slate-950 sm:text-[32px]">Explorador de votaciones</h1>
     <p class="mt-2 max-w-2xl text-[15px] leading-6 text-slate-600">Consulte cómo se votaron los proyectos en primer y segundo debate, cómo votó cada diputado y qué tan cohesionadas estuvieron las bancadas.</p>
     <p id="lnv-updated" class="mt-2 text-xs text-slate-500"></p>
-    <div id="lnv-acta-debug" class="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950" aria-live="polite">
-      <strong class="font-bold">Diagnóstico de actas:</strong>
-      <div id="lnv-acta-debug-content" class="mt-1">Cargando…</div>
-    </div>
   </header>
 
   <section aria-label="Resumen" class="grid grid-cols-2 gap-2.5 sm:grid-cols-4" id="lnv-summary"></section>
@@ -125,14 +121,15 @@ const LNV_PARTIES = {
 
 /*
   CONEXIÓN VIVA A GOOGLE SHEETS
-  La visualización depende exclusivamente de estas tres fuentes CSV publicadas.
+  La visualización depende exclusivamente de estas cuatro fuentes CSV publicadas.
   Cada carga añade un parámetro anticaché para solicitar la versión más reciente.
   Si alguna fuente falla o queda vacía, se muestra un aviso y no se presentan datos.
 */
 const LNV_LIVE_SOURCES = {
   votaciones: "https://docs.google.com/spreadsheets/d/e/2PACX-1vREDoF5zk2YWO-PVDHahOV095ODJOhmXot9DzzA6DJUrkE6EHzlNWafruljwWVLbjMfGhC96i4C51U2/pub?gid=681496794&single=true&output=csv",
   votos: "https://docs.google.com/spreadsheets/d/e/2PACX-1vREDoF5zk2YWO-PVDHahOV095ODJOhmXot9DzzA6DJUrkE6EHzlNWafruljwWVLbjMfGhC96i4C51U2/pub?gid=615914149&single=true&output=csv",
-  padron: "https://docs.google.com/spreadsheets/d/e/2PACX-1vREDoF5zk2YWO-PVDHahOV095ODJOhmXot9DzzA6DJUrkE6EHzlNWafruljwWVLbjMfGhC96i4C51U2/pub?gid=1299653306&single=true&output=csv"
+  padron: "https://docs.google.com/spreadsheets/d/e/2PACX-1vREDoF5zk2YWO-PVDHahOV095ODJOhmXot9DzzA6DJUrkE6EHzlNWafruljwWVLbjMfGhC96i4C51U2/pub?gid=1299653306&single=true&output=csv",
+  actas: "https://docs.google.com/spreadsheets/d/e/2PACX-1vREDoF5zk2YWO-PVDHahOV095ODJOhmXot9DzzA6DJUrkE6EHzlNWafruljwWVLbjMfGhC96i4C51U2/pub?gid=516874160&single=true&output=csv"
 };
 
 let lnvData = null;
@@ -174,7 +171,7 @@ function lnvCSV(text) {
 }
 async function lnvLoad() {
   const out={};
-  for (const key of ["votaciones","votos","padron"]) {
+  for (const key of ["votaciones","votos","padron","actas"]) {
     const url=LNV_LIVE_SOURCES[key];
     if (!url) throw new Error(`Falta configurar la fuente en vivo: ${key}`);
     const lnvSep=url.includes("?")?"&":"?";
@@ -227,9 +224,22 @@ function lnvRenderSummary() {
     ["Expedientes",exp.size]
   ];
   document.getElementById("lnv-summary").innerHTML=cards.map(([l,n])=>`<article class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-2xl font-bold tracking-tight text-slate-950">${n}</div><div class="mt-0.5 text-xs font-medium text-slate-500">${l}</div></article>`).join("");
-  // La fecha de actualización corresponde al acta más reciente cargada,
-  // no simplemente a la última votación por fecha.
-  const withActa=v.filter(x=>String(x["Número de acta"]||"").trim()!=="");
+
+  // La fecha de actualización se calcula exclusivamente desde la pestaña ACTAS.
+  // Ordinarias y extraordinarias se tratan como series independientes:
+  // se toma el número de acta más alto de cada tipo y luego la fecha más reciente
+  // entre esas dos actas.
+  const actas=Array.isArray(lnvData.actas) ? lnvData.actas : [];
+
+  function lnvActaField(row, candidates) {
+    const keys=Object.keys(row||{});
+    for (const candidate of candidates) {
+      const target=lnvNorm(candidate);
+      const exact=keys.find(k=>lnvNorm(k)===target);
+      if (exact) return row[exact];
+    }
+    return "";
+  }
 
   function lnvActaNumber(value) {
     const s=String(value||"").trim();
@@ -237,66 +247,49 @@ function lnvRenderSummary() {
     return m ? Number(m[0]) : null;
   }
 
-  function lnvSessionKind(value) {
+  function lnvActaKind(value) {
     const s=lnvNorm(value);
     if (s.includes("extraordin")) return "extraordinaria";
     if (s.includes("ordin")) return "ordinaria";
-    return "otra";
+    return "";
   }
 
-  const validActas=withActa
-    .map(row=>({
+  const parsedActas=actas.map(row=>{
+    const numero=lnvActaField(row,[
+      "Número de acta","Numero de acta","N° de acta","Nº de acta","Acta"
+    ]);
+    const tipo=lnvActaField(row,[
+      "Tipo de sesión","Tipo de sesion","Sesión","Sesion","Tipo"
+    ]);
+    const fecha=lnvActaField(row,[
+      "Fecha del acta","Fecha de acta","Fecha de sesión","Fecha de sesion","Fecha"
+    ]);
+
+    return {
       row,
-      num:lnvActaNumber(row["Número de acta"]),
-      kind:lnvSessionKind(row["Tipo de sesión"])
-    }))
-    .filter(x=>Number.isFinite(x.num));
+      num:lnvActaNumber(numero),
+      kind:lnvActaKind(tipo),
+      fecha:String(fecha||"").trim()
+    };
+  }).filter(x=>Number.isFinite(x.num) && x.kind && lnvDateISO(x.fecha));
 
-  // Las sesiones ordinarias y extraordinarias pueden llevar numeraciones
-  // de acta independientes. Por eso se busca primero el acta más alta
-  // dentro de cada tipo de sesión y luego se compara la fecha de ambas.
-  const latestByKind=["ordinaria","extraordinaria"]
-    .map(kind=>{
-      const subset=validActas.filter(x=>x.kind===kind);
-      if (!subset.length) return null;
+  const latestByKind=["ordinaria","extraordinaria"].map(kind=>{
+    const subset=parsedActas.filter(x=>x.kind===kind);
+    if (!subset.length) return null;
 
-      const maxActa=Math.max(...subset.map(x=>x.num));
+    const maxActa=Math.max(...subset.map(x=>x.num));
+    return subset
+      .filter(x=>x.num===maxActa)
+      .sort((a,b)=>lnvDateISO(b.fecha).localeCompare(lnvDateISO(a.fecha)))[0] || null;
+  }).filter(Boolean);
 
-      const rowsOfMax=subset
-        .filter(x=>x.num===maxActa)
-        .map(x=>x.row)
-        .sort((a,b)=>lnvDateISO(b["Fecha de votación"]).localeCompare(lnvDateISO(a["Fecha de votación"])));
-
-      const row=rowsOfMax[0] || null;
-      return row ? {kind, maxActa, row} : null;
-    })
-    .filter(Boolean);
-
-  const latestCandidate=latestByKind
+  const latestActa=latestByKind
     .slice()
-    .sort((a,b)=>lnvDateISO(b.row["Fecha de votación"]).localeCompare(lnvDateISO(a.row["Fecha de votación"])))[0] || null;
+    .sort((a,b)=>lnvDateISO(b.fecha).localeCompare(lnvDateISO(a.fecha)))[0] || null;
 
-  const latestActa=latestCandidate?.row || null;
-
-  document.getElementById("lnv-updated").textContent=latestActa?.["Fecha de votación"]
-    ? "Base de datos actualizada a la fecha: "+lnvFmtDate(latestActa["Fecha de votación"])
-    : "";
-
-  const debug=document.getElementById("lnv-acta-debug-content");
-  if (debug) {
-    const ord=latestByKind.find(x=>x.kind==="ordinaria");
-    const ext=latestByKind.find(x=>x.kind==="extraordinaria");
-
-    const fmtCandidate=(item)=> item
-      ? `Acta ${item.maxActa} · fecha cruda: ${item.row["Fecha de votación"] || "—"} · normalizada: ${lnvDateISO(item.row["Fecha de votación"]) || "—"}`
-      : "Sin actas detectadas";
-
-    debug.innerHTML=`
-      <div><strong>Ordinaria:</strong> ${fmtCandidate(ord)}</div>
-      <div><strong>Extraordinaria:</strong> ${fmtCandidate(ext)}</div>
-      <div><strong>Elegida:</strong> ${latestCandidate ? `${latestCandidate.kind} · acta ${latestCandidate.maxActa} · ${latestCandidate.row["Fecha de votación"] || "—"} · ${lnvDateISO(latestCandidate.row["Fecha de votación"]) || "—"}` : "Ninguna"}</div>
-    `;
-  }
+  document.getElementById("lnv-updated").textContent=latestActa
+    ? "Base de datos actualizada a la fecha: "+lnvFmtDate(lnvDateISO(latestActa.fecha))
+    : "Base de datos actualizada: fecha no disponible";
 }
 function lnvDateISO(value) {
   const s=String(value||"").trim();
