@@ -89,6 +89,14 @@
       </select>
     </div>
     <div id="lnv-vote-list" class="mt-3 space-y-3"></div>
+    <nav id="lnv-vote-pagination" class="lnv-hidden mt-5 border-t border-slate-200 pt-4" aria-label="Paginación de votaciones">
+      <p id="lnv-vote-range" class="mb-3 text-center text-xs text-slate-500"></p>
+      <div class="flex items-center justify-between gap-3">
+        <button id="lnv-vote-prev" type="button" class="lnv-focus cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 disabled:cursor-default disabled:opacity-40">Anterior</button>
+        <span id="lnv-vote-page-label" class="text-xs font-semibold text-slate-600"></span>
+        <button id="lnv-vote-next" type="button" class="lnv-focus cursor-pointer rounded-lg border border-[#11497d] bg-[#11497d] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:shadow-md disabled:cursor-default disabled:opacity-40">Siguiente</button>
+      </div>
+    </nav>
   </section>
 
   <section id="lnv-tab-diputados" class="lnv-tab-panel lnv-hidden mt-5">
@@ -139,7 +147,7 @@ const LNV_LIVE_SOURCES = {
 };
 
 let lnvData = null;
-let lnvState = { tab:"votaciones", query:"", voteFilter:"todos", dateFrom:"", dateTo:"", sort:"newest", party:"PPSO" };
+let lnvState = { tab:"votaciones", query:"", voteFilter:"todos", dateFrom:"", dateTo:"", sort:"newest", party:"PPSO", votePage:1, votePageSize:20 };
 
 function lnvNorm(v) {
   return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
@@ -338,7 +346,7 @@ function lnvDateISO(value) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
-function lnvRenderVotes() {
+function lnvRenderVotes(options={}) {
   const q=lnvNorm(lnvState.query), f=lnvState.voteFilter;
   const from=lnvState.dateFrom, to=lnvState.dateTo;
   let rows=lnvData.votaciones.filter(v=>{
@@ -349,10 +357,27 @@ function lnvRenderVotes() {
     return matches&&ff&&fd;
   });
   rows.sort((a,b)=>lnvState.sort==="newest" ? String(b["Fecha de votación"]).localeCompare(String(a["Fecha de votación"])) : String(a["Fecha de votación"]).localeCompare(String(b["Fecha de votación"])));
-  document.getElementById("lnv-vote-count").textContent=rows.length===1 ? "1 votación" : `${rows.length} votaciones`;
+
+  const total=rows.length;
+  const pageSize=lnvState.votePageSize;
+  const totalPages=Math.max(1,Math.ceil(total/pageSize));
+  lnvState.votePage=Math.min(Math.max(1,lnvState.votePage),totalPages);
+  const startIndex=(lnvState.votePage-1)*pageSize;
+  const endIndex=Math.min(startIndex+pageSize,total);
+  const pageRows=rows.slice(startIndex,endIndex);
+
+  document.getElementById("lnv-vote-count").textContent=total===1 ? "1 votación" : `${total} votaciones`;
   const target=document.getElementById("lnv-vote-list");
-  if (!rows.length) { target.innerHTML=`<div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">No encontramos votaciones con esos criterios.</div>`; return; }
-  target.innerHTML=rows.map(v=>{
+  const pagination=document.getElementById("lnv-vote-pagination");
+
+  if (!rows.length) {
+    target.innerHTML=`<div class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">No encontramos votaciones con esos criterios.</div>`;
+    pagination.classList.add("lnv-hidden");
+    lnvResize();
+    return;
+  }
+
+  target.innerHTML=pageRows.map(v=>{
     const c=lnvVoteCounts(v["ID de votación"]);
     return `<button type="button" class="lnv-vote-card lnv-focus block w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300" data-id="${lnvEsc(v["ID de votación"])}">
       <div class="flex items-start justify-between gap-3">
@@ -374,7 +399,19 @@ function lnvRenderVotes() {
       </div>
     </button>`;
   }).join("");
+
   target.querySelectorAll(".lnv-vote-card").forEach(b=>b.addEventListener("click",()=>lnvShowVote(b.dataset.id)));
+
+  document.getElementById("lnv-vote-range").textContent=`Mostrando ${startIndex+1}–${endIndex} de ${total} votaciones`;
+  document.getElementById("lnv-vote-page-label").textContent=`Página ${lnvState.votePage} de ${totalPages}`;
+  document.getElementById("lnv-vote-prev").disabled=lnvState.votePage<=1;
+  document.getElementById("lnv-vote-next").disabled=lnvState.votePage>=totalPages;
+  pagination.classList.toggle("lnv-hidden",total<=pageSize);
+
+  if (options.scrollToList) {
+    document.getElementById("lnv-vote-count").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  lnvResize();
 }
 function lnvShowVote(id) {
   const v=lnvData.votaciones.find(x=>x["ID de votación"]===id); if(!v)return;
@@ -891,11 +928,12 @@ async function lnvInit() {
   lnvRenderSummary();
   lnvSetTab("votaciones");
   const search=document.getElementById("lnv-search"), clear=document.getElementById("lnv-clear-search");
-  search.addEventListener("input",()=>{lnvState.query=search.value;clear.classList.toggle("lnv-hidden",!search.value);lnvSetTab(lnvState.tab);});
-  clear.addEventListener("click",()=>{search.value="";lnvState.query="";clear.classList.add("lnv-hidden");lnvSetTab(lnvState.tab);search.focus();});
+  search.addEventListener("input",()=>{lnvState.query=search.value;lnvState.votePage=1;clear.classList.toggle("lnv-hidden",!search.value);lnvSetTab(lnvState.tab);});
+  clear.addEventListener("click",()=>{search.value="";lnvState.query="";lnvState.votePage=1;clear.classList.add("lnv-hidden");lnvSetTab(lnvState.tab);search.focus();});
   document.querySelectorAll(".lnv-tab").forEach(b=>b.addEventListener("click",()=>lnvSetTab(b.dataset.tab)));
   document.querySelectorAll(".lnv-filter").forEach(b=>b.addEventListener("click",()=>{
     lnvState.voteFilter=b.dataset.filter;
+    lnvState.votePage=1;
     document.querySelectorAll(".lnv-filter").forEach(x=>{const on=x===b;x.classList.toggle("lnv-chip-active",on);x.classList.toggle("border-slate-300",!on);x.classList.toggle("text-slate-700",!on);});
     lnvRenderVotes();lnvResize();
   }));
@@ -906,6 +944,7 @@ async function lnvInit() {
   function lnvApplyDateRange() {
     lnvState.dateFrom=dateFrom.value;
     lnvState.dateTo=dateTo.value;
+    lnvState.votePage=1;
 
     if (lnvState.dateFrom && lnvState.dateTo && lnvState.dateFrom>lnvState.dateTo) {
       if (document.activeElement===dateFrom) {
@@ -929,11 +968,21 @@ async function lnvInit() {
     dateTo.value="";
     lnvState.dateFrom="";
     lnvState.dateTo="";
+    lnvState.votePage=1;
     clearDates.classList.add("lnv-hidden");
     lnvRenderVotes();
     lnvResize();
   });
-  document.getElementById("lnv-sort").addEventListener("change",e=>{lnvState.sort=e.target.value;lnvRenderVotes();lnvResize();});
+  document.getElementById("lnv-sort").addEventListener("change",e=>{lnvState.sort=e.target.value;lnvState.votePage=1;lnvRenderVotes();lnvResize();});
+  document.getElementById("lnv-vote-prev").addEventListener("click",()=>{
+    if (lnvState.votePage<=1) return;
+    lnvState.votePage--;
+    lnvRenderVotes({scrollToList:true});
+  });
+  document.getElementById("lnv-vote-next").addEventListener("click",()=>{
+    lnvState.votePage++;
+    lnvRenderVotes({scrollToList:true});
+  });
   window.addEventListener("resize",lnvResize);
   new ResizeObserver(lnvResize).observe(document.getElementById("lnv-app"));
   lnvResize();
