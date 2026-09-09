@@ -491,15 +491,139 @@ function lnvRenderDeputies() {
 function lnvShowDeputy(email) {
   const p=lnvData._padByEmail.get(email); if(!p)return;
   const party=LNV_PARTIES[p.Partido]||{name:p.Partido,colors:["#64748b"]}, st=lnvDeputyStats(email);
-  const effective=st.c.favor+st.c.contra;
-  const history=[...st.rows].sort((a,b)=>String(b["Fecha de votación"]).localeCompare(String(a["Fecha de votación"]))).map(r=>`<div class="border-t border-slate-100 py-2.5"><div class="flex items-start justify-between gap-3"><div><div class="text-xs text-slate-500">${lnvEsc(lnvFmtDate(r["Fecha de votación"]))} · Exp. ${lnvEsc(r.Expediente)}</div><div class="mt-0.5 text-xs font-semibold leading-4 text-slate-800">${lnvEsc(r["Proyecto de ley"])}</div></div><span class="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${r.Voto==="A favor"?"bg-emerald-50 text-emerald-700":r.Voto==="En contra"?"bg-rose-50 text-rose-700":"bg-slate-100 text-slate-600"}">${lnvEsc(r.Voto)}</span></div></div>`).join("");
   const box=document.getElementById("lnv-deputy-detail");
+
+  const lnvVoteFilterKey=(vote)=>{
+    if (vote==="A favor") return "favor";
+    if (vote==="En contra") return "contra";
+    if (vote==="No votó") return "no";
+    return "nr";
+  };
+
+  const lnvVoteLabel=(key)=>({
+    favor:"A favor",
+    contra:"En contra",
+    no:"Presente, no votó",
+    nr:"Ausente en la sesión"
+  }[key]||"");
+
+  const lnvHistoryRow=(r)=>{
+    const key=lnvVoteFilterKey(r.Voto);
+    const badge=key==="favor"
+      ? "bg-emerald-50 text-emerald-700"
+      : key==="contra"
+      ? "bg-rose-50 text-rose-700"
+      : "bg-slate-100 text-slate-600";
+
+    return `<div class="border-t border-slate-100 py-2.5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-xs text-slate-500">${lnvEsc(lnvFmtDate(r["Fecha de votación"]))} · Exp. ${lnvEsc(r.Expediente)}</div>
+          <div class="mt-0.5 text-xs font-semibold leading-4 text-slate-800">${lnvEsc(r["Proyecto de ley"])}</div>
+        </div>
+        <span class="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${badge}">${lnvEsc(lnvVoteLabel(key))}</span>
+      </div>
+    </div>`;
+  };
+
   box.innerHTML=`<article class="mb-4 rounded-2xl border-2 border-slate-300 bg-white p-4">
-    <div class="flex items-start gap-3">${lnvAvatar(p,"lg")}<div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><h2 class="text-lg font-bold leading-6 text-slate-950">${lnvEsc(p.Nombre)}</h2><div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500"><span>${lnvEsc(p.Provincia)}</span><span aria-hidden="true">·</span>${lnvPartyBadge(p.Partido)}<span>${lnvEsc(party.name)}</span></div></div><button id="lnv-close-deputy" class="lnv-focus shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" type="button">Cerrar</button></div></div></div>
-    <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4"><div class="rounded-lg bg-emerald-50 p-2.5"><b class="text-xl text-emerald-800">${st.c.favor}</b><div class="text-xs text-emerald-700">A favor</div></div><div class="rounded-lg bg-rose-50 p-2.5"><b class="text-xl text-rose-800">${st.c.contra}</b><div class="text-xs text-rose-700">En contra</div></div><div class="rounded-lg bg-slate-100 p-2.5"><b class="text-xl text-slate-700">${st.c.no}</b><div class="text-xs text-slate-600">Presente, no votó</div></div><div class="rounded-lg bg-slate-50 p-2.5"><b class="text-xl text-slate-500">${st.c.nr}</b><div class="text-xs text-slate-500">Ausente en la sesión</div></div></div>
-    <div class="mt-4"><h3 class="text-sm font-bold text-slate-900">Historial de votaciones</h3><div class="mt-1 max-h-[420px] overflow-y-auto pr-1">${history}</div></div>
+    <div class="flex items-start gap-3">
+      ${lnvAvatar(p,"lg")}
+      <div class="min-w-0 flex-1">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-bold leading-6 text-slate-950">${lnvEsc(p.Nombre)}</h2>
+            <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+              <span>${lnvEsc(p.Provincia)}</span><span aria-hidden="true">·</span>${lnvPartyBadge(p.Partido)}<span>${lnvEsc(party.name)}</span>
+            </div>
+          </div>
+          <button id="lnv-close-deputy" class="lnv-focus shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" type="button">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Filtrar historial por tipo de voto">
+      <button type="button" class="lnv-deputy-vote-filter lnv-focus rounded-lg border border-transparent bg-emerald-50 p-2.5 text-left transition hover:border-emerald-300" data-vote-filter="favor" aria-pressed="false">
+        <b class="text-xl text-emerald-800">${st.c.favor}</b>
+        <div class="text-xs text-emerald-700">A favor</div>
+      </button>
+      <button type="button" class="lnv-deputy-vote-filter lnv-focus rounded-lg border border-transparent bg-rose-50 p-2.5 text-left transition hover:border-rose-300" data-vote-filter="contra" aria-pressed="false">
+        <b class="text-xl text-rose-800">${st.c.contra}</b>
+        <div class="text-xs text-rose-700">En contra</div>
+      </button>
+      <button type="button" class="lnv-deputy-vote-filter lnv-focus rounded-lg border border-transparent bg-slate-100 p-2.5 text-left transition hover:border-slate-400" data-vote-filter="no" aria-pressed="false">
+        <b class="text-xl text-slate-700">${st.c.no}</b>
+        <div class="text-xs text-slate-600">Presente, no votó</div>
+      </button>
+      <button type="button" class="lnv-deputy-vote-filter lnv-focus rounded-lg border border-transparent bg-slate-50 p-2.5 text-left transition hover:border-slate-400" data-vote-filter="nr" aria-pressed="false">
+        <b class="text-xl text-slate-500">${st.c.nr}</b>
+        <div class="text-xs text-slate-500">Ausente en la sesión</div>
+      </button>
+    </div>
+
+    <div id="lnv-deputy-filter-status" class="lnv-hidden mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
+      <p id="lnv-deputy-filter-text" class="text-xs font-medium text-slate-700"></p>
+      <button id="lnv-clear-deputy-filter" class="lnv-focus rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#11497d] hover:bg-slate-100" type="button">Limpiar filtros</button>
+    </div>
+
+    <div class="mt-4">
+      <h3 id="lnv-deputy-history-title" class="text-sm font-bold text-slate-900">Historial de votaciones</h3>
+      <div id="lnv-deputy-history" class="mt-1 max-h-[420px] overflow-y-auto pr-1"></div>
+    </div>
   </article>`;
-  document.getElementById("lnv-close-deputy").addEventListener("click",()=>{box.innerHTML="";lnvResize();});
+
+  const historyBox=document.getElementById("lnv-deputy-history");
+  const historyTitle=document.getElementById("lnv-deputy-history-title");
+  const status=document.getElementById("lnv-deputy-filter-status");
+  const statusText=document.getElementById("lnv-deputy-filter-text");
+  const clearFilter=document.getElementById("lnv-clear-deputy-filter");
+  const filterButtons=[...box.querySelectorAll(".lnv-deputy-vote-filter")];
+  let activeFilter="";
+
+  function lnvRenderDeputyHistory() {
+    const rows=[...st.rows]
+      .filter(r=>!activeFilter || lnvVoteFilterKey(r.Voto)===activeFilter)
+      .sort((a,b)=>String(b["Fecha de votación"]).localeCompare(String(a["Fecha de votación"])));
+
+    historyTitle.textContent=activeFilter
+      ? `Historial de votaciones · ${lnvVoteLabel(activeFilter)} (${rows.length})`
+      : `Historial de votaciones (${rows.length})`;
+
+    historyBox.innerHTML=rows.length
+      ? rows.map(lnvHistoryRow).join("")
+      : `<div class="border-t border-slate-100 py-5 text-center text-xs text-slate-500">No hay votaciones en esta categoría.</div>`;
+
+    status.classList.toggle("lnv-hidden",!activeFilter);
+    if (activeFilter) statusText.textContent=`Mostrando solo: ${lnvVoteLabel(activeFilter)}`;
+
+    filterButtons.forEach(btn=>{
+      const on=btn.dataset.voteFilter===activeFilter;
+      btn.setAttribute("aria-pressed",on?"true":"false");
+      btn.classList.toggle("ring-2",on);
+      btn.classList.toggle("ring-[#11497d]",on);
+      btn.classList.toggle("ring-offset-1",on);
+    });
+
+    lnvResize();
+  }
+
+  filterButtons.forEach(btn=>btn.addEventListener("click",()=>{
+    const key=btn.dataset.voteFilter;
+    activeFilter=activeFilter===key ? "" : key;
+    lnvRenderDeputyHistory();
+  }));
+
+  clearFilter.addEventListener("click",()=>{
+    activeFilter="";
+    lnvRenderDeputyHistory();
+  });
+
+  document.getElementById("lnv-close-deputy").addEventListener("click",()=>{
+    box.innerHTML="";
+    lnvResize();
+  });
+
+  lnvRenderDeputyHistory();
   box.scrollIntoView({behavior:"smooth",block:"start"});
   lnvResize();
 }
