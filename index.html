@@ -724,13 +724,14 @@ function lnvRenderParties() {
     const pct=Math.max(0,Math.min(1,value||0));
     const activePct=pct*100;
     const accent=lnvPartyAccent(code);
+    const displayPct=new Intl.NumberFormat("es-CR",{minimumFractionDigits:1,maximumFractionDigits:1}).format(activePct);
 
     return `<div class="relative mx-auto h-32 w-32 shrink-0 rounded-full"
       style="background:conic-gradient(${accent} 0 ${activePct}%, #e2e8f0 ${activePct}% 100%)"
-      role="img" aria-label="Cohesión promedio ${Math.round(pct*100)}%">
+      role="img" aria-label="Cohesión promedio ${displayPct}%">
       <div class="absolute inset-[14px] flex items-center justify-center rounded-full bg-white">
         <div class="text-center">
-          <div class="text-2xl font-bold tracking-tight text-slate-950">${Math.round(pct*100)}%</div>
+          <div class="text-2xl font-bold tracking-tight text-slate-950">${displayPct}%</div>
           <div class="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">cohesión</div>
         </div>
       </div>
