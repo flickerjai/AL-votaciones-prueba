@@ -917,7 +917,9 @@ function lnvRenderParties() {
             </div>
             <div class="flex shrink-0 flex-col items-end gap-1">
               <span class="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">${names.length} en contra</span>
-              ${item.cohesive ? `<span class="rounded-full border border-[#124e91]/20 bg-[#124e91]/10 px-2 py-1 text-[10px] font-bold text-[#124e91]">Sin división</span>` : ""}
+              ${item.cohesive
+                ? `<span class="rounded-full border border-[#124e91]/20 bg-[#124e91]/10 px-2 py-1 text-[10px] font-bold text-[#124e91]">Sin división</span>`
+                : `<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">Con división</span>`}
             </div>
           </div>
           <div class="mt-1 text-[11px] font-semibold text-[#124e91]">Ver quiénes votaron en contra</div>
@@ -981,7 +983,7 @@ function lnvRenderParties() {
           <div class="mb-2 flex flex-wrap items-end justify-between gap-2">
             <div>
               <h3 class="text-sm font-bold text-slate-900">Votaciones con votos en contra</h3>
-              <p class="mt-0.5 text-xs leading-5 text-slate-500">Incluye toda votación en la que al menos un diputado de la fracción votó en contra. La etiqueta <strong class="font-semibold text-[#124e91]">“Sin división”</strong> señala cuando todos los miembros de la bancada que emitieron un voto efectivo coincidieron, aunque ese voto haya sido en contra.</p>
+              <p class="mt-0.5 text-xs leading-5 text-slate-500">Incluye toda votación en la que al menos un diputado de la fracción votó en contra. <strong class="font-semibold text-[#124e91]">“Sin división”</strong> indica que todos los miembros de la bancada que emitieron un voto efectivo coincidieron; <strong class="font-semibold text-amber-800">“Con división”</strong> indica que hubo votos a favor y en contra dentro de la misma fracción.</p>
             </div>
             <span class="text-xs font-semibold text-slate-500">${dissentVotes.length} ${dissentVotes.length===1?"votación":"votaciones"}</span>
           </div>
