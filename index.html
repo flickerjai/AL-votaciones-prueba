@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Explorador de votaciones de la Asamblea Legislativa 2026-2030</title>
+  <title>¿Cómo votaron los diputados en la Asamblea Legislativa? · 2026-2030</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html, body { margin:0; padding:0; background:#fff; color:#111827; }
@@ -12,12 +12,21 @@
     .lnv-shell { width:100%; max-width:720px; margin:0 auto; overflow-x:hidden; }
     .lnv-scrollbar::-webkit-scrollbar { height:6px; }
     .lnv-scrollbar::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:999px; }
-    .lnv-focus:focus-visible { outline:3px solid rgba(17,73,125,.28); outline-offset:2px; }
+    .lnv-focus:focus-visible { outline:3px solid rgba(18,78,145,.28); outline-offset:2px; }
     .lnv-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
     .lnv-avatar-fallback { background:#eef2f7; color:#334155; }
     .lnv-vote-dot { width:12px; height:12px; border-radius:999px; flex:0 0 auto; }
     .lnv-party-strip { height:4px; border-radius:999px; }
-    .lnv-chip-active { background:#11497d; color:#fff; border-color:#11497d; }
+    .lnv-chip-active { background:#124e91; color:#fff; border-color:#124e91; }
+    @media (hover:hover) {
+      .lnv-tab:hover:not(.lnv-chip-active),
+      .lnv-filter:hover:not(.lnv-chip-active),
+      .lnv-party-pick:hover:not([aria-pressed="true"]) {
+        background:#124e91 !important;
+        border-color:#124e91 !important;
+        color:#fff !important;
+      }
+    }
     .lnv-donut-wrap { position:relative; width:156px; height:156px; margin:0 auto; }
     .lnv-donut-center { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; pointer-events:none; }
     .lnv-hidden { display:none !important; }
@@ -35,7 +44,7 @@
 <main class="lnv-shell px-4 py-5 sm:px-5 sm:py-6" id="lnv-app">
   <header class="mb-5">
     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Asamblea Legislativa · 2026–2030</p>
-    <h1 class="mt-1 text-[27px] font-bold leading-tight tracking-tight text-slate-950 sm:text-[32px]">Explorador de votaciones</h1>
+    <h1 class="mt-1 text-[27px] font-bold leading-tight tracking-tight text-slate-950 sm:text-[32px]">¿Cómo votaron los diputados en la Asamblea Legislativa?</h1>
     <p class="mt-2 max-w-2xl text-[15px] leading-6 text-slate-600">Consulte cómo se votaron los proyectos en primer y segundo debate, cómo votó cada diputado y qué tan cohesionadas estuvieron las bancadas.</p>
     <p id="lnv-updated" class="mt-2 text-xs text-slate-500"></p>
   </header>
@@ -52,7 +61,7 @@
   </section>
 
   <nav class="lnv-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Secciones">
-    <button class="lnv-tab lnv-focus lnv-chip-active shrink-0 rounded-full border border-[#11497d] bg-[#11497d] px-4 py-2 text-sm font-semibold text-white" data-tab="votaciones" type="button">Votaciones</button>
+    <button class="lnv-tab lnv-focus lnv-chip-active shrink-0 rounded-full border border-[#124e91] bg-[#124e91] px-4 py-2 text-sm font-semibold text-white" data-tab="votaciones" type="button">Votaciones</button>
     <button class="lnv-tab lnv-focus shrink-0 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" data-tab="diputados" type="button">Diputados</button>
     <button class="lnv-tab lnv-focus shrink-0 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" data-tab="partidos" type="button">Partidos</button>
   </nav>
@@ -78,11 +87,11 @@
           <input id="lnv-date-to" type="date" class="lnv-date-input lnv-focus block w-full min-w-0 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-700 sm:text-sm" aria-label="Fecha final">
         </label>
       </div>
-      <button id="lnv-clear-dates" class="lnv-focus lnv-hidden mt-2 rounded-lg px-2 py-1 text-xs font-semibold text-[#11497d] hover:bg-slate-100" type="button">Limpiar fechas</button>
+      <button id="lnv-clear-dates" class="lnv-focus lnv-hidden mt-2 rounded-lg px-2 py-1 text-xs font-semibold text-[#124e91] hover:bg-slate-100" type="button">Limpiar fechas</button>
     </fieldset>
     <div id="lnv-vote-detail" class="mt-4"></div>
     <div class="mt-4 flex items-center justify-between gap-3">
-      <p id="lnv-vote-count" class="text-sm text-slate-500"></p>
+      <p id="lnv-vote-count" class="text-sm font-bold text-[#124e91]"></p>
       <select id="lnv-sort" class="lnv-focus rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700" aria-label="Ordenar votaciones">
         <option value="newest">Más recientes</option>
         <option value="oldest">Más antiguas</option>
@@ -91,7 +100,7 @@
     <div id="lnv-vote-list" class="mt-3 space-y-3"></div>
     <div id="lnv-vote-more-wrap" class="lnv-hidden mt-5 border-t border-slate-200 pt-4 text-center">
       <p id="lnv-vote-more-count" class="mb-3 text-xs text-slate-500"></p>
-      <button id="lnv-vote-more" type="button" class="lnv-focus cursor-pointer rounded-lg border border-[#11497d] bg-[#11497d] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:shadow-md">Mostrar 20 más</button>
+      <button id="lnv-vote-more" type="button" class="lnv-focus cursor-pointer rounded-lg border border-[#124e91] bg-[#124e91] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:shadow-md">Mostrar 20 más</button>
     </div>
   </section>
 
@@ -101,7 +110,7 @@
       <h2 class="text-base font-bold text-slate-950">Diputados por provincia</h2>
       <p id="lnv-deputy-count" class="mt-1 text-sm text-slate-500"></p>
     </div>
-    <div id="lnv-deputy-list" class="space-y-6"></div>
+    <div id="lnv-deputy-list" class="space-y-3"></div>
   </section>
 
   <section id="lnv-tab-partidos" class="lnv-tab-panel lnv-hidden mt-5">
@@ -112,7 +121,7 @@
 
   <footer class="mt-8 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">
     <p><strong class="font-semibold text-slate-700">Fuente:</strong> registros de votaciones y padrón legislativo suministrados para esta visualización; fotografías alojadas en el sitio de la Asamblea Legislativa.</p>
-    <p class="mt-1">La base puede actualizarse periódicamente. Los porcentajes de cohesión se calculan únicamente entre votos “A favor” y “En contra”. “Presente, no votó” indica presencia sin voto emitido; “Ausente en la sesión” indica ausencia de la sesión.</p>
+    <p class="mt-1">La base puede actualizarse periódicamente. Los porcentajes de cohesión se calculan únicamente entre votos “A favor” y “En contra”. “Presente, pero no votó” indica presencia sin voto emitido; “Ausente en la sesión” indica ausencia de la sesión.</p>
   
   <div class="mt-4 border-t border-slate-200 pt-3 text-[11px] leading-4 text-slate-500">
     Desarrollo: <span class="font-semibold text-slate-700">Jailine González</span>
@@ -382,7 +391,7 @@ function lnvRenderVotes(options={}) {
     return `<button type="button" class="lnv-vote-card lnv-focus block w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300" data-id="${lnvEsc(v["ID de votación"])}">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <div class="text-xs font-semibold text-slate-500">${lnvEsc(lnvFmtDate(v["Fecha de votación"]))} · Exp. ${lnvEsc(v.Expediente)}</div>
+          <div class="text-xs font-semibold text-slate-500">${lnvEsc(lnvFmtDate(v["Fecha de votación"]))} · Expediente ${lnvEsc(v.Expediente)}</div>
           <div class="mt-1 text-sm font-bold leading-5 text-slate-950 lnv-clamp-2">${lnvEsc(v["Proyecto de ley"])}</div>
         </div>
         <span class="shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${v.Resultado==="Aprobado"?"bg-emerald-50 text-emerald-700":"bg-rose-50 text-rose-700"}">${lnvEsc(v.Resultado)}</span>
@@ -393,7 +402,7 @@ function lnvRenderVotes(options={}) {
         <span class="text-slate-300" aria-hidden="true">·</span>
         <span class="text-rose-700"><b class="font-bold">${c.contra}</b> en contra</span>
         <span class="text-slate-300" aria-hidden="true">·</span>
-        <span class="text-slate-600"><b class="font-bold text-slate-700">${c.no}</b> presente, no votó</span>
+        <span class="text-slate-600"><b class="font-bold text-slate-700">${c.no}</b> presente, pero no votó</span>
         <span class="text-slate-300" aria-hidden="true">·</span>
         <span class="text-slate-500"><b class="font-bold">${c.nr}</b> ausente en la sesión</span>
       </div>
@@ -443,17 +452,17 @@ function lnvShowVote(id) {
   }).join("");
   const box=document.getElementById("lnv-vote-detail");
   box.innerHTML=`<article class="rounded-2xl border-2 border-slate-300 bg-white p-4 shadow-sm">
-    <div class="flex items-start justify-between gap-3"><div><div class="text-xs font-semibold text-slate-500">${lnvEsc(lnvFmtDate(v["Fecha de votación"]))} · Exp. ${lnvEsc(v.Expediente)}</div><h2 class="mt-1 text-[14px] font-bold leading-[1.35] text-slate-950 sm:text-lg sm:leading-6">${lnvEsc(v["Proyecto de ley"])}</h2></div><button id="lnv-close-vote" class="lnv-focus shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" type="button">Cerrar</button></div>
+    <div class="flex items-start justify-between gap-3"><div><div class="text-xs font-semibold text-slate-500">${lnvEsc(lnvFmtDate(v["Fecha de votación"]))} · Expediente ${lnvEsc(v.Expediente)}</div><h2 class="mt-1 text-[14px] font-bold leading-[1.35] text-slate-950 sm:text-lg sm:leading-6">${lnvEsc(v["Proyecto de ley"])}</h2></div><button id="lnv-close-vote" class="lnv-focus shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" type="button">Cerrar</button></div>
     <div class="mt-2 text-[12px] leading-5 text-slate-600 sm:text-sm">${lnvEsc(v["Objeto de la votación"])} · ${lnvEsc(v.Resultado)} · Acta ${lnvEsc(v["Número de acta"])}</div>
     <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
       <div class="rounded-lg bg-emerald-50 p-2.5"><div class="text-xl font-bold text-emerald-800">${c.favor}</div><div class="text-xs text-emerald-700">A favor</div></div>
       <div class="rounded-lg bg-rose-50 p-2.5"><div class="text-xl font-bold text-rose-800">${c.contra}</div><div class="text-xs text-rose-700">En contra</div></div>
-      <div class="rounded-lg bg-slate-100 p-2.5"><div class="text-xl font-bold text-slate-700">${c.no}</div><div class="text-xs text-slate-600">Presente, no votó</div></div>
+      <div class="rounded-lg bg-slate-100 p-2.5"><div class="text-xl font-bold text-slate-700">${c.no}</div><div class="text-xs text-slate-600">Presente, pero no votó</div></div>
       <div class="rounded-lg bg-slate-50 p-2.5"><div class="text-xl font-bold text-slate-500">${c.nr}</div><div class="text-xs text-slate-500">Ausente en la sesión</div></div>
     </div>
-    <div class="mt-4 flex flex-wrap gap-x-3 gap-y-2 text-[11px] text-slate-500"><span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full border-[3px] border-emerald-500 bg-white"></i>A favor</span><span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full border-[3px] border-rose-500 bg-white"></i>En contra</span><span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full border-[3px] border-slate-400 bg-white"></i>Presente, no votó</span><span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full border-[3px] border-slate-200 bg-white"></i>Ausente en la sesión</span></div>
+    <div class="mt-4 flex flex-wrap gap-x-3 gap-y-2 text-[11px] text-slate-500"><span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full border-[3px] border-emerald-500 bg-white"></i>A favor</span><span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full border-[3px] border-rose-500 bg-white"></i>En contra</span><span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full border-[3px] border-slate-400 bg-white"></i>Presente, pero no votó</span><span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full border-[3px] border-slate-200 bg-white"></i>Ausente en la sesión</span></div>
     <div class="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-4 text-slate-500">
-      <strong class="font-semibold text-slate-700">Presente, no votó:</strong> estaba presente en la sesión, pero no emitió voto en esta votación.
+      <strong class="font-semibold text-slate-700">Presente, pero no votó:</strong> estaba presente en la sesión, pero no emitió voto en esta votación.
       <br class="sm:hidden">
       <span class="hidden sm:inline"> · </span>
       <strong class="font-semibold text-slate-700">Ausente en la sesión:</strong> no estaba presente, por lo que no aparece entre los votos emitidos.
@@ -497,6 +506,7 @@ function lnvRenderDeputies() {
 
   target.innerHTML=provinces.map(province=>{
     const deputies=grouped.get(province);
+    const slug=lnvNorm(province).replace(/[^a-z0-9]+/g,"-");
 
     const cards=deputies.map(p=>{
       const st=lnvDeputyStats(p.Correo).c;
@@ -520,16 +530,34 @@ function lnvRenderDeputies() {
       </button>`;
     }).join("");
 
-    return `<section class="lnv-province-group" aria-labelledby="lnv-province-${lnvEsc(lnvNorm(province).replace(/[^a-z0-9]+/g,"-"))}">
-      <div class="mb-2 flex items-end justify-between gap-3 border-b border-slate-300 pb-2">
-        <h3 id="lnv-province-${lnvEsc(lnvNorm(province).replace(/[^a-z0-9]+/g,"-"))}" class="text-sm font-bold uppercase tracking-wide text-slate-800">${lnvEsc(province)}</h3>
-        <span class="text-xs text-slate-500">${deputies.length} diputado${deputies.length===1?"":"s"}</span>
-      </div>
-      <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">${cards}</div>
+    return `<section class="lnv-province-group rounded-xl border border-slate-200 bg-white" aria-labelledby="lnv-province-${lnvEsc(slug)}">
+      <button type="button"
+        class="lnv-province-toggle lnv-focus flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-slate-50"
+        data-province="${lnvEsc(slug)}"
+        aria-expanded="true"
+        aria-controls="lnv-province-list-${lnvEsc(slug)}">
+        <div class="min-w-0">
+          <h3 id="lnv-province-${lnvEsc(slug)}" class="text-sm font-extrabold uppercase tracking-wide text-[#124e91]">${lnvEsc(province)}</h3>
+          <span class="mt-0.5 block text-xs text-slate-500">${deputies.length} diputado${deputies.length===1?"":"s"}</span>
+        </div>
+        <span class="lnv-province-action shrink-0 rounded-full bg-[#124e91]/10 px-2.5 py-1 text-[11px] font-bold text-[#124e91]">Ocultar</span>
+      </button>
+      <div id="lnv-province-list-${lnvEsc(slug)}" class="lnv-province-list grid grid-cols-1 gap-2.5 border-t border-slate-200 p-3 sm:grid-cols-2">${cards}</div>
     </section>`;
   }).join("");
 
   document.querySelectorAll(".lnv-deputy").forEach(b=>b.addEventListener("click",()=>lnvShowDeputy(b.dataset.email)));
+
+  document.querySelectorAll(".lnv-province-toggle").forEach(button=>button.addEventListener("click",()=>{
+    const list=document.getElementById(`lnv-province-list-${button.dataset.province}`);
+    if (!list) return;
+    const expanded=button.getAttribute("aria-expanded")==="true";
+    button.setAttribute("aria-expanded",expanded?"false":"true");
+    list.classList.toggle("lnv-hidden",expanded);
+    const action=button.querySelector(".lnv-province-action");
+    if (action) action.textContent=expanded ? "Mostrar" : "Ocultar";
+    lnvResize();
+  }));
 }
 function lnvShowDeputy(email) {
   const p=lnvData._padByEmail.get(email); if(!p)return;
@@ -546,7 +574,7 @@ function lnvShowDeputy(email) {
   const lnvVoteLabel=(key)=>({
     favor:"A favor",
     contra:"En contra",
-    no:"Presente, no votó",
+    no:"Presente, pero no votó",
     nr:"Ausente en la sesión"
   }[key]||"");
 
@@ -599,7 +627,7 @@ function lnvShowDeputy(email) {
       </button>
       <button type="button" class="lnv-deputy-vote-filter lnv-focus cursor-pointer rounded-lg border border-slate-300 bg-slate-100 p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-500 hover:shadow-md active:translate-y-0" data-vote-filter="no" aria-pressed="false">
         <b class="text-xl text-slate-700">${st.c.no}</b>
-        <div class="text-xs text-slate-600">Presente, no votó</div>
+        <div class="text-xs text-slate-600">Presente, pero no votó</div>
       </button>
       <button type="button" class="lnv-deputy-vote-filter lnv-focus cursor-pointer rounded-lg border border-slate-300 bg-slate-50 p-2.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-500 hover:shadow-md active:translate-y-0" data-vote-filter="nr" aria-pressed="false">
         <b class="text-xl text-slate-500">${st.c.nr}</b>
@@ -609,7 +637,7 @@ function lnvShowDeputy(email) {
 
     <div id="lnv-deputy-filter-status" class="lnv-hidden mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
       <p id="lnv-deputy-filter-text" class="text-xs font-medium text-slate-700"></p>
-      <button id="lnv-clear-deputy-filter" class="lnv-focus rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#11497d] hover:bg-slate-100" type="button">Limpiar filtros</button>
+      <button id="lnv-clear-deputy-filter" class="lnv-focus rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#124e91] hover:bg-slate-100" type="button">Limpiar filtros</button>
     </div>
 
     <div class="mt-4">
@@ -646,7 +674,7 @@ function lnvShowDeputy(email) {
       const on=btn.dataset.voteFilter===activeFilter;
       btn.setAttribute("aria-pressed",on?"true":"false");
       btn.classList.toggle("ring-2",on);
-      btn.classList.toggle("ring-[#11497d]",on);
+      btn.classList.toggle("ring-[#124e91]",on);
       btn.classList.toggle("ring-offset-1",on);
     });
 
@@ -742,7 +770,7 @@ function lnvRenderParties() {
   selector.innerHTML=partyCodes.map(code=>{
     const on=code===lnvState.party;
     return `<button type="button"
-      class="lnv-party-pick lnv-focus shrink-0 cursor-pointer rounded-full border px-3 py-2 text-xs font-bold shadow-sm transition ${on?"border-[#11497d] bg-[#11497d] text-white":"border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:shadow-md"}"
+      class="lnv-party-pick lnv-focus shrink-0 cursor-pointer rounded-full border px-3 py-2 text-xs font-bold shadow-sm transition ${on?"border-[#124e91] bg-[#124e91] text-white":"border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:shadow-md"}"
       data-party="${code}" aria-pressed="${on?"true":"false"}">${lnvEsc(code)}</button>`;
   }).join("");
 
@@ -801,12 +829,12 @@ function lnvRenderParties() {
         <button type="button" class="lnv-party-dissent-toggle lnv-focus w-full py-3 text-left" data-dissent="${i}" aria-expanded="false">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <div class="text-xs text-slate-500">${lnvEsc(lnvFmtDate(v["Fecha de votación"]))} · Exp. ${lnvEsc(v.Expediente)}</div>
+              <div class="text-xs text-slate-500">${lnvEsc(lnvFmtDate(v["Fecha de votación"]))} · Expediente ${lnvEsc(v.Expediente)}</div>
               <div class="mt-0.5 text-xs font-semibold leading-4 text-slate-800">${lnvEsc(v["Proyecto de ley"])}</div>
             </div>
             <span class="shrink-0 rounded-full bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">${names.length} en contra</span>
           </div>
-          <div class="mt-1 text-[11px] font-semibold text-[#11497d]">Ver quiénes votaron en contra</div>
+          <div class="mt-1 text-[11px] font-semibold text-[#124e91]">Ver quiénes votaron en contra</div>
         </button>
         <div id="lnv-party-dissent-${i}" class="lnv-hidden pb-3">
           <div class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
@@ -897,9 +925,9 @@ function lnvSetTab(tab) {
     b.classList.toggle("bg-white", !on);
     b.classList.toggle("text-slate-700", !on);
     b.classList.toggle("border-slate-300", !on);
-    b.classList.toggle("bg-[#11497d]", on);
+    b.classList.toggle("bg-[#124e91]", on);
     b.classList.toggle("text-white", on);
-    b.classList.toggle("border-[#11497d]", on);
+    b.classList.toggle("border-[#124e91]", on);
     if(on) b.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
   });
   if(tab==="votaciones")lnvRenderVotes(); else if(tab==="diputados")lnvRenderDeputies(); else lnvRenderParties();
